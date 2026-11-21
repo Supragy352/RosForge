@@ -1,0 +1,38 @@
+/* RosForge Starlight custom theme & diagram styles */
+
+:root {
+  --sl-color-accent-low: #13253f;
+  --sl-color-accent: #2563eb;
+  --sl-color-accent-high: #93c5fd;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #dbeafe;
+  --sl-color-accent: #1d4ed8;
+  --sl-color-accent-high: #1e3a8a;
+}
+
+.rf-diagram {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--sl-color-gray-5);
+  background: var(--sl-color-bg-nav);
+  overflow-x: auto;
+}
+
+.rf-diagram svg {
+  display: block;
+  width: 100%;
+  max-width: 780px;
+  height: auto;
+  margin: 0 auto;
+  font-family: var(--sl-font);
+}
+
+.rf-diagram figcaption {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+}

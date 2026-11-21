@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+docs/dist/
+.astro/
+src-tauri/target/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# Local test artifacts
+coverage/
+
+# Local WSL2 VM disk
+wsl-ubuntu-24.04/
+*.vhdx

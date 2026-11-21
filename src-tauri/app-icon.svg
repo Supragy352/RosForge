@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="none" stroke="#334155" stroke-width="20"/>
+  <!-- Graph edges -->
+  <path d="M 310 340 C 440 340, 420 512, 512 512" fill="none" stroke="#38bdf8" stroke-width="34" stroke-linecap="round"/>
+  <path d="M 310 684 C 440 684, 420 512, 512 512" fill="none" stroke="#818cf8" stroke-width="34" stroke-linecap="round"/>
+  <path d="M 512 512 C 620 512, 620 512, 730 512" fill="none" stroke="#10b981" stroke-width="34" stroke-linecap="round"/>
+  <!-- Topic pill center -->
+  <rect x="432" y="452" width="180" height="120" rx="60" fill="#0f172a" stroke="url(#accent)" stroke-width="26"/>
+  <!-- Left nodes -->
+  <rect x="190" y="265" width="150" height="150" rx="32" fill="#1e293b" stroke="#38bdf8" stroke-width="24"/>
+  <circle cx="265" cy="340" r="24" fill="#38bdf8"/>
+  <rect x="190" y="609" width="150" height="150" rx="32" fill="#1e293b" stroke="#818cf8" stroke-width="24"/>
+  <circle cx="265" cy="684" r="24" fill="#818cf8"/>
+  <!-- Right node -->
+  <rect x="690" y="437" width="150" height="150" rx="32" fill="#1e293b" stroke="#10b981" stroke-width="24"/>
+  <circle cx="765" cy="512" r="24" fill="#10b981"/>
+</svg>

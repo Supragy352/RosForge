@@ -1,0 +1,1520 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RosForge — Progress Dashboard &amp; Kanban Tracker</title>
+    <style>
+      :root {
+        --bg: #0b1120;
+        --bg-elev: #111827;
+        --bg-card: #162033;
+        --bg-hover: #1e293b;
+        --border: #243249;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --text-subtle: #64748b;
+        --accent: #38bdf8;
+        --accent-strong: #0ea5e9;
+        --done: #10b981;
+        --doing: #38bdf8;
+        --todo: #f59e0b;
+        --backlog: #475569;
+        --p0: #f43f5e;
+        --p1: #f97316;
+        --p2: #eab308;
+        --p3: #64748b;
+        --bug: #fb7185;
+        --issue: #c084fc;
+        --feature: #38bdf8;
+        --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      [data-theme="light"] {
+        --bg: #f8fafc;
+        --bg-elev: #ffffff;
+        --bg-card: #ffffff;
+        --bg-hover: #f1f5f9;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --text-muted: #475569;
+        --text-subtle: #64748b;
+        --accent: #0284c7;
+        --accent-strong: #0369a1;
+        --backlog: #cbd5e1;
+        --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 20px;
+        background: var(--bg-elev);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .logo {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #38bdf8, #10b981);
+        color: #0b1120;
+        font-weight: 800;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      .pill.live {
+        border-color: rgba(16, 185, 129, 0.45);
+        color: var(--done);
+        background: rgba(16, 185, 129, 0.1);
+      }
+
+      .pill.local {
+        border-color: rgba(245, 158, 11, 0.45);
+        color: var(--todo);
+        background: rgba(245, 158, 11, 0.1);
+      }
+
+      .nav-tabs {
+        display: inline-flex;
+        padding: 3px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+      }
+
+      .nav-tab {
+        border: 0;
+        background: transparent;
+        color: var(--text-muted);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .nav-tab.active {
+        background: var(--bg-card);
+        color: var(--text);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        color: var(--text);
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease;
+      }
+
+      .btn:hover {
+        background: var(--bg-hover);
+      }
+
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #0b1120;
+      }
+
+      .btn.primary:hover {
+        background: var(--accent-strong);
+      }
+
+      .btn.danger {
+        border-color: rgba(244, 63, 94, 0.5);
+        color: #fb7185;
+      }
+
+      .btn.danger.armed {
+        background: #f43f5e;
+        border-color: #f43f5e;
+        color: #fff;
+      }
+
+      main {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .view {
+        display: none;
+      }
+
+      .view.active {
+        display: block;
+      }
+
+      /* Dashboard */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      @media (max-width: 900px) {
+        .kpi-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      .card {
+        background: var(--bg-elev);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .kpi-label {
+        font-size: 11.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+      }
+
+      .kpi-value {
+        font-size: 28px;
+        font-weight: 800;
+        margin-top: 6px;
+        letter-spacing: -0.02em;
+      }
+
+      .kpi-sub {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      .stacked-bar {
+        display: flex;
+        height: 12px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        margin: 12px 0 8px;
+      }
+
+      .seg-done {
+        background: var(--done);
+      }
+      .seg-doing {
+        background: var(--doing);
+      }
+      .seg-todo {
+        background: var(--todo);
+      }
+      .seg-backlog {
+        background: var(--backlog);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+
+      .dash-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      @media (max-width: 1024px) {
+        .dash-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 12px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .ms-row {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .ms-row:last-child {
+        border-bottom: 0;
+      }
+
+      .ms-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .ms-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      .tag-current {
+        background: rgba(56, 189, 248, 0.16);
+        color: var(--accent);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1px 6px;
+        border-radius: 999px;
+      }
+
+      .ms-meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .mini-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .mini-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 11px;
+        border-radius: 8px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: border-color 0.12s ease;
+      }
+
+      .mini-item:hover {
+        border-color: var(--accent);
+      }
+
+      .mini-item-main {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .mini-item-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .empty-hint {
+        font-size: 12.5px;
+        color: var(--text-subtle);
+        padding: 10px 0;
+      }
+
+      .prio-breakdown {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .prio-cell {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        text-align: center;
+        background: var(--bg-card);
+      }
+
+      .prio-cell .count {
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .prio-cell .lbl {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      /* Badges */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        flex-shrink: 0;
+      }
+
+      .badge-P0 {
+        background: rgba(244, 63, 94, 0.18);
+        color: #fb7185;
+      }
+      .badge-P1 {
+        background: rgba(249, 115, 22, 0.18);
+        color: #fb923c;
+      }
+      .badge-P2 {
+        background: rgba(234, 179, 8, 0.18);
+        color: #facc15;
+      }
+      .badge-P3 {
+        background: rgba(100, 116, 139, 0.22);
+        color: #94a3b8;
+      }
+
+      .badge-spec {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      .badge-kind-feature {
+        background: rgba(56, 189, 248, 0.14);
+        color: var(--feature);
+      }
+      .badge-kind-bug {
+        background: rgba(251, 113, 133, 0.16);
+        color: var(--bug);
+      }
+      .badge-kind-issue {
+        background: rgba(192, 132, 252, 0.16);
+        color: var(--issue);
+      }
+
+      /* Board */
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        background: var(--bg-elev);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .filters input[type="search"],
+      .filters select,
+      .filters input[type="number"] {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 6px 10px;
+        font-size: 13px;
+        outline: none;
+      }
+
+      .filters input[type="search"] {
+        min-width: 220px;
+        flex: 1;
+      }
+
+      .filters input:focus,
+      .filters select:focus,
+      dialog input:focus,
+      dialog select:focus,
+      dialog textarea:focus {
+        border-color: var(--accent);
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(260px, 1fr));
+        gap: 14px;
+        align-items: start;
+        overflow-x: auto;
+        padding-bottom: 12px;
+      }
+
+      .column {
+        background: var(--bg-elev);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        min-height: 460px;
+        max-height: calc(100vh - 200px);
+      }
+
+      .column.drag-over {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+      }
+
+      .col-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .col-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .wip-warn {
+        background: rgba(244, 63, 94, 0.18);
+        color: #fb7185;
+        border: 1px solid rgba(244, 63, 94, 0.45);
+        font-size: 11px;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-weight: 700;
+      }
+
+      .col-cards {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .kanban-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 10px 11px;
+        cursor: pointer;
+        transition: transform 0.08s ease, border-color 0.12s ease;
+      }
+
+      .kanban-card:hover {
+        border-color: var(--accent);
+      }
+
+      .kanban-card.dragging {
+        opacity: 0.45;
+      }
+
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+
+      .card-badges {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+
+      .card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        word-break: break-word;
+      }
+
+      .card-note {
+        margin-top: 6px;
+        font-size: 11.5px;
+        color: var(--text-muted);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* Dialog */
+      dialog {
+        background: var(--bg-elev);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0;
+        width: min(560px, 94vw);
+        box-shadow: var(--shadow);
+      }
+
+      dialog::backdrop {
+        background: rgba(2, 6, 23, 0.72);
+        backdrop-filter: blur(2px);
+      }
+
+      .dlg-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .dlg-head h2 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .dlg-body {
+        padding: 16px 18px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .form-row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .form-row.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      label.field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      label.field input,
+      label.field select,
+      label.field textarea {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 10px;
+        color: var(--text);
+        font-weight: 400;
+        outline: none;
+      }
+
+      .dlg-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px 18px;
+        border-top: 1px solid var(--border);
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 18px;
+        right: 18px;
+        background: var(--bg-elev);
+        border: 1px solid var(--border);
+        padding: 9px 14px;
+        border-radius: 9px;
+        box-shadow: var(--shadow);
+        font-size: 12.5px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(8px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">RF</div>
+        <div>
+          <h1>RosForge Tracker</h1>
+        </div>
+        <span id="syncPill" class="pill">Loading…</span>
+      </div>
+
+      <nav class="nav-tabs" aria-label="View switcher">
+        <button class="nav-tab active" data-view="dashboard" type="button">Dashboard</button>
+        <button class="nav-tab" data-view="board" type="button">Kanban Board</button>
+      </nav>
+
+      <div class="actions">
+        <button id="btnNew" class="btn primary" type="button">+ New item</button>
+        <button id="btnExport" class="btn" type="button" title="Download tracker/items.json">
+          Export JSON
+        </button>
+        <button id="btnImport" class="btn" type="button" title="Import items.json">
+          Import JSON
+        </button>
+        <input id="fileImport" type="file" accept="application/json,.json" hidden />
+        <button id="btnTheme" class="btn" type="button" title="Toggle dark/light theme">
+          Theme
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section id="view-dashboard" class="view active"></section>
+
+      <section id="view-board" class="view">
+        <div class="filters">
+          <input
+            id="fSearch"
+            type="search"
+            placeholder="Search title, spec (e.g. F1.8), or note… (press /)"
+          />
+          <select id="fKind" aria-label="Filter by kind">
+            <option value="">All kinds</option>
+            <option value="feature">Feature</option>
+            <option value="bug">Bug</option>
+            <option value="issue">Issue</option>
+          </select>
+          <select id="fMilestone" aria-label="Filter by milestone">
+            <option value="">All milestones</option>
+            <option value="M0">M0 — Scaffolding</option>
+            <option value="M1">M1 — MVP</option>
+            <option value="M2">M2 — Build &amp; Run</option>
+            <option value="M3">M3 — Behaviors</option>
+            <option value="M4">M4 — Code → Graph</option>
+            <option value="M5">M5 — Import</option>
+            <option value="M6">M6 — Live</option>
+            <option value="—">— Unscheduled</option>
+          </select>
+          <select id="fPriority" aria-label="Filter by priority">
+            <option value="">All priorities</option>
+            <option value="P0">P0</option>
+            <option value="P1">P1</option>
+            <option value="P2">P2</option>
+            <option value="P3">P3</option>
+          </select>
+          <label
+            style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 12px;
+              color: var(--text-muted);
+            "
+          >
+            WIP limit
+            <input id="fWipLimit" type="number" min="1" max="50" style="width: 60px" />
+          </label>
+          <button id="btnClearFilters" class="btn" type="button">Reset</button>
+        </div>
+
+        <div id="boardColumns" class="board"></div>
+      </section>
+    </main>
+
+    <dialog id="itemDialog">
+      <form id="itemForm" method="dialog">
+        <div class="dlg-head">
+          <h2 id="dlgTitle">Edit Item</h2>
+          <button id="btnCloseDlg" class="btn" type="button">Close</button>
+        </div>
+        <div class="dlg-body">
+          <input id="eId" type="hidden" />
+          <label class="field">
+            Title *
+            <input id="eTitle" type="text" maxlength="200" required />
+          </label>
+
+          <div class="form-row three">
+            <label class="field">
+              Kind
+              <select id="eKind">
+                <option value="feature">feature</option>
+                <option value="bug">bug</option>
+                <option value="issue">issue</option>
+              </select>
+            </label>
+            <label class="field">
+              Milestone
+              <select id="eMilestone">
+                <option value="M0">M0</option>
+                <option value="M1">M1</option>
+                <option value="M2">M2</option>
+                <option value="M3">M3</option>
+                <option value="M4">M4</option>
+                <option value="M5">M5</option>
+                <option value="M6">M6</option>
+                <option value="—">—</option>
+              </select>
+            </label>
+            <label class="field">
+              Spec ID
+              <input id="eSpec" type="text" maxlength="20" placeholder="e.g. F1.8" />
+            </label>
+          </div>
+
+          <div class="form-row three">
+            <label class="field">
+              Status
+              <select id="eStatus">
+                <option value="backlog">Backlog</option>
+                <option value="todo">To do</option>
+                <option value="doing">In progress</option>
+                <option value="done">Done</option>
+              </select>
+            </label>
+            <label class="field">
+              Priority
+              <select id="ePriority">
+                <option value="P0">P0</option>
+                <option value="P1">P1</option>
+                <option value="P2">P2</option>
+                <option value="P3">P3</option>
+              </select>
+            </label>
+            <label class="field">
+              Order
+              <input id="eOrder" type="number" step="1" />
+            </label>
+          </div>
+
+          <label class="field">
+            Note
+            <textarea id="eNote" rows="4" maxlength="2000" placeholder="Implementation notes, links, blockers…"></textarea>
+          </label>
+        </div>
+        <div class="dlg-foot">
+          <div>
+            <button id="btnDelete" class="btn danger" type="button" hidden>Delete</button>
+          </div>
+          <div style="display: flex; gap: 8px">
+            <button id="btnCancel" class="btn" type="button">Cancel</button>
+            <button class="btn primary" type="submit">Save</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const STORAGE_KEY = "rosforge-tracker-v1";
+      const MILESTONES = [
+        { id: "M0", label: "M0 — Scaffolding" },
+        { id: "M1", label: "M1 — MVP: Graph → Codegen" },
+        { id: "M2", label: "M2 — Build & Run" },
+        { id: "M3", label: "M3 — Behavior Templates" },
+        { id: "M4", label: "M4 — Code → Graph Sync" },
+        { id: "M5", label: "M5 — Import Existing Packages" },
+        { id: "M6", label: "M6 — Live Introspection" },
+        { id: "—", label: "— Unscheduled" },
+      ];
+
+      const COLUMNS = [
+        { id: "backlog", label: "Backlog", color: "var(--backlog)" },
+        { id: "todo", label: "To do", color: "var(--todo)" },
+        { id: "doing", label: "In progress", color: "var(--doing)" },
+        { id: "done", label: "Done", color: "var(--done)" },
+      ];
+
+      const PRIO_RANK = { P0: 0, P1: 1, P2: 2, P3: 3 };
+
+      let state = {
+        schemaVersion: 1,
+        project: "RosForge",
+        wipLimit: 5,
+        items: [],
+      };
+      let apiMode = false;
+      let deleteArmed = false;
+      let dragItemId = null;
+
+      const filters = {
+        search: "",
+        kind: "",
+        milestone: "",
+        priority: "",
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      function esc(str) {
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      let toastTimer = null;
+      function toast(msg) {
+        const el = $("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+      }
+
+      function sortItems(list) {
+        return [...list].sort((a, b) => {
+          const pr = (PRIO_RANK[a.priority] ?? 9) - (PRIO_RANK[b.priority] ?? 9);
+          if (pr !== 0) return pr;
+          const ord = (a.order ?? 9999) - (b.order ?? 9999);
+          if (ord !== 0) return ord;
+          return String(a.title).localeCompare(String(b.title));
+        });
+      }
+
+      async function loadData() {
+        const syncPill = $("syncPill");
+
+        // 1. Try local persistence server API (`pnpm tracker:serve`)
+        try {
+          const res = await fetch("/api/items", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.items)) {
+              state = data;
+              apiMode = true;
+              syncPill.textContent = "Synced to tracker/items.json";
+              syncPill.className = "pill live";
+              return;
+            }
+          }
+        } catch {
+          // Not served by tracker server
+        }
+
+        // 2. Try relative ./items.json (e.g. static HTTP server)
+        let fetched = null;
+        try {
+          const res = await fetch("./items.json", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.items)) fetched = data;
+          }
+        } catch {
+          // file:// origin blocks fetch in some browsers
+        }
+
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          try {
+            state = JSON.parse(cached);
+            syncPill.textContent = "Local browser cache (use Export JSON to save)";
+            syncPill.className = "pill local";
+            return;
+          } catch {
+            // ignore corrupted cache
+          }
+        }
+
+        if (fetched) {
+          state = fetched;
+          syncPill.textContent = "Read ./items.json (Export JSON or run pnpm tracker:serve)";
+          syncPill.className = "pill local";
+          return;
+        }
+
+        syncPill.textContent = "No items loaded — click Import JSON or run pnpm tracker:serve";
+        syncPill.className = "pill local";
+      }
+
+      async function persistData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (!apiMode) return;
+        try {
+          const res = await fetch("/api/items", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(state, null, 2),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+          toast(`Failed saving to disk: ${err.message}`);
+        }
+      }
+
+      function setView(view) {
+        document.querySelectorAll(".nav-tab").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.view === view);
+        });
+        $("view-dashboard").classList.toggle("active", view === "dashboard");
+        $("view-board").classList.toggle("active", view === "board");
+        if (location.hash !== `#${view}`) {
+          history.replaceState(null, "", `#${view}`);
+        }
+        render();
+      }
+
+      function renderDashboard() {
+        const items = state.items;
+        const specFeatures = items.filter((i) => i.kind === "feature" && i.spec);
+        const totalSpec = specFeatures.length || 1;
+        const specDone = specFeatures.filter((i) => i.status === "done").length;
+        const specDoing = specFeatures.filter((i) => i.status === "doing").length;
+        const specTodo = specFeatures.filter((i) => i.status === "todo").length;
+        const specBacklog = specFeatures.filter((i) => i.status === "backlog").length;
+        const pctDone = Math.round((specDone / totalSpec) * 100);
+
+        const doingItems = sortItems(items.filter((i) => i.status === "doing"));
+        const openBugs = items.filter((i) => i.kind === "bug" && i.status !== "done");
+        const openIssues = items.filter((i) => i.kind === "issue" && i.status !== "done");
+        const upNext = sortItems(items.filter((i) => i.status === "todo")).slice(0, 6);
+
+        let currentMilestoneId = null;
+        for (const ms of MILESTONES) {
+          if (ms.id === "—") continue;
+          const msItems = items.filter((i) => i.milestone === ms.id);
+          if (msItems.length > 0 && msItems.some((i) => i.status !== "done")) {
+            currentMilestoneId = ms.id;
+            break;
+          }
+        }
+
+        const openProblems = [...openBugs, ...openIssues];
+        const prioCounts = { P0: 0, P1: 0, P2: 0, P3: 0 };
+        openProblems.forEach((p) => {
+          if (prioCounts[p.priority] !== undefined) prioCounts[p.priority]++;
+        });
+
+        const milestoneRows = MILESTONES.map((ms) => {
+          const msItems = items.filter((i) => i.milestone === ms.id);
+          if (ms.id === "—" && msItems.length === 0) return "";
+          const total = msItems.length;
+          const done = msItems.filter((i) => i.status === "done").length;
+          const doing = msItems.filter((i) => i.status === "doing").length;
+          const todo = msItems.filter((i) => i.status === "todo").length;
+          const backlog = msItems.filter((i) => i.status === "backlog").length;
+          const pct = total ? Math.round((done / total) * 100) : 0;
+          const isCurrent = ms.id === currentMilestoneId;
+
+          return `
+            <div class="ms-row">
+              <div class="ms-header">
+                <div class="ms-name">
+                  <span>${esc(ms.label)}</span>
+                  ${isCurrent ? '<span class="tag-current">current</span>' : ""}
+                </div>
+                <div class="ms-meta">${done}/${total} done (${pct}%)</div>
+              </div>
+              <div class="stacked-bar" style="height:8px;margin:0">
+                <div class="seg-done" style="width:${total ? (done / total) * 100 : 0}%"></div>
+                <div class="seg-doing" style="width:${total ? (doing / total) * 100 : 0}%"></div>
+                <div class="seg-todo" style="width:${total ? (todo / total) * 100 : 0}%"></div>
+                <div class="seg-backlog" style="width:${total ? (backlog / total) * 100 : 0}%"></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        const renderMiniList = (list, emptyText) => {
+          if (!list.length) return `<div class="empty-hint">${esc(emptyText)}</div>`;
+          return `<div class="mini-list">${list
+            .map(
+              (item) => `
+              <div class="mini-item" data-open-id="${esc(item.id)}">
+                <div class="mini-item-main">
+                  <span class="badge badge-${esc(item.priority)}">${esc(item.priority)}</span>
+                  ${item.spec ? `<span class="badge badge-spec">${esc(item.spec)}</span>` : ""}
+                  <span class="mini-item-title">${esc(item.title)}</span>
+                </div>
+                <span class="badge badge-kind-${esc(item.kind)}">${esc(item.milestone)}</span>
+              </div>
+            `
+            )
+            .join("")}</div>`;
+        };
+
+        $("view-dashboard").innerHTML = `
+          <div class="kpi-grid">
+            <div class="card">
+              <div class="kpi-label">Spec Features Done</div>
+              <div class="kpi-value" style="color:var(--done)">${pctDone}%</div>
+              <div class="kpi-sub">${specDone} of ${specFeatures.length} features</div>
+            </div>
+            <div class="card">
+              <div class="kpi-label">In Progress</div>
+              <div class="kpi-value" style="color:var(--doing)">${doingItems.length}</div>
+              <div class="kpi-sub">WIP limit: ${state.wipLimit || 5}</div>
+            </div>
+            <div class="card">
+              <div class="kpi-label">Open Bugs</div>
+              <div class="kpi-value" style="color:var(--bug)">${openBugs.length}</div>
+              <div class="kpi-sub">Across all milestones</div>
+            </div>
+            <div class="card">
+              <div class="kpi-label">Open Issues</div>
+              <div class="kpi-value" style="color:var(--issue)">${openIssues.length}</div>
+              <div class="kpi-sub">Tracked non-bug issues</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">
+              <span>Overall Spec Progress (${specFeatures.length} features)</span>
+              <span class="ms-meta">${specDone} done · ${specDoing} doing · ${specTodo} todo · ${specBacklog} backlog</span>
+            </div>
+            <div class="stacked-bar">
+              <div class="seg-done" style="width:${(specDone / totalSpec) * 100}%"></div>
+              <div class="seg-doing" style="width:${(specDoing / totalSpec) * 100}%"></div>
+              <div class="seg-todo" style="width:${(specTodo / totalSpec) * 100}%"></div>
+              <div class="seg-backlog" style="width:${(specBacklog / totalSpec) * 100}%"></div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="dot seg-done"></span>Done (${specDone})</span>
+              <span class="legend-item"><span class="dot seg-doing"></span>In progress (${specDoing})</span>
+              <span class="legend-item"><span class="dot seg-todo"></span>To do (${specTodo})</span>
+              <span class="legend-item"><span class="dot seg-backlog"></span>Backlog (${specBacklog})</span>
+            </div>
+          </div>
+
+          <div class="dash-grid">
+            <div class="card">
+              <div class="section-title"><span>Milestones</span></div>
+              ${milestoneRows}
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div class="card">
+                <div class="section-title"><span>In Progress (${doingItems.length})</span></div>
+                ${renderMiniList(doingItems, "Nothing in progress yet — drag a card to In progress or start M1.")}
+              </div>
+
+              <div class="card">
+                <div class="section-title"><span>Up Next (Top 6 To Do)</span></div>
+                ${renderMiniList(upNext, "No items in To do.")}
+              </div>
+
+              <div class="card">
+                <div class="section-title"><span>Open Bugs &amp; Issues by Priority</span></div>
+                <div class="prio-breakdown">
+                  ${["P0", "P1", "P2", "P3"]
+                    .map(
+                      (p) => `
+                    <div class="prio-cell">
+                      <div class="count" style="color:var(--${p.toLowerCase()})">${prioCounts[p]}</div>
+                      <div class="lbl">${p}</div>
+                    </div>`
+                    )
+                    .join("")}
+                </div>
+                ${renderMiniList(sortItems(openProblems).slice(0, 5), "No open bugs or issues.")}
+              </div>
+            </div>
+          </div>
+        `;
+
+        $("view-dashboard")
+          .querySelectorAll("[data-open-id]")
+          .forEach((el) => {
+            el.addEventListener("click", () => openEditModal(el.dataset.openId));
+          });
+      }
+
+      function renderBoard() {
+        $("fWipLimit").value = state.wipLimit || 5;
+        const q = filters.search.trim().toLowerCase();
+        const filtered = state.items.filter((item) => {
+          if (filters.kind && item.kind !== filters.kind) return false;
+          if (filters.milestone && item.milestone !== filters.milestone) return false;
+          if (filters.priority && item.priority !== filters.priority) return false;
+          if (q) {
+            const hay = `${item.title} ${item.spec || ""} ${item.note || ""}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+
+        const wipLimit = Number(state.wipLimit) || 5;
+        const container = $("boardColumns");
+        container.innerHTML = COLUMNS.map((col) => {
+          const cards = sortItems(filtered.filter((i) => i.status === col.id));
+          const totalInCol = state.items.filter((i) => i.status === col.id).length;
+          const wipExceeded = col.id === "doing" && totalInCol > wipLimit;
+
+          return `
+            <div class="column" data-col="${col.id}">
+              <div class="col-header">
+                <div class="col-title">
+                  <span class="dot" style="background:${col.color}"></span>
+                  <span>${esc(col.label)}</span>
+                  <span class="pill">${cards.length}</span>
+                </div>
+                ${wipExceeded ? `<span class="wip-warn">WIP &gt; ${wipLimit}</span>` : ""}
+              </div>
+              <div class="col-cards">
+                ${
+                  cards.length
+                    ? cards
+                        .map(
+                          (item) => `
+                  <article class="kanban-card" draggable="true" data-id="${esc(item.id)}">
+                    <div class="card-top">
+                      <div class="card-badges">
+                        <span class="badge badge-${esc(item.priority)}">${esc(item.priority)}</span>
+                        <span class="badge badge-kind-${esc(item.kind)}">${esc(item.kind)}</span>
+                        ${item.spec ? `<span class="badge badge-spec">${esc(item.spec)}</span>` : ""}
+                      </div>
+                      <span class="badge badge-spec">${esc(item.milestone)}</span>
+                    </div>
+                    <div class="card-title">${esc(item.title)}</div>
+                    ${item.note ? `<div class="card-note">${esc(item.note)}</div>` : ""}
+                  </article>
+                `
+                        )
+                        .join("")
+                    : `<div class="empty-hint" style="text-align:center;padding:24px 8px">Drop items here</div>`
+                }
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        container.querySelectorAll(".kanban-card").forEach((card) => {
+          card.addEventListener("click", () => openEditModal(card.dataset.id));
+          card.addEventListener("dragstart", (e) => {
+            dragItemId = card.dataset.id;
+            card.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", dragItemId);
+          });
+          card.addEventListener("dragend", () => {
+            card.classList.remove("dragging");
+            dragItemId = null;
+          });
+        });
+
+        container.querySelectorAll(".column").forEach((colEl) => {
+          colEl.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            colEl.classList.add("drag-over");
+          });
+          colEl.addEventListener("dragleave", (e) => {
+            if (!colEl.contains(e.relatedTarget)) {
+              colEl.classList.remove("drag-over");
+            }
+          });
+          colEl.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            colEl.classList.remove("drag-over");
+            const id = dragItemId || e.dataTransfer.getData("text/plain");
+            const nextStatus = colEl.dataset.col;
+            const item = state.items.find((i) => i.id === id);
+            if (!item || item.status === nextStatus) return;
+            item.status = nextStatus;
+            item.updatedAt = Date.now();
+            await persistData();
+            render();
+            toast(`Moved ${item.spec || item.id} → ${nextStatus}`);
+          });
+        });
+      }
+
+      function render() {
+        renderDashboard();
+        renderBoard();
+      }
+
+      function resetDeleteButton() {
+        deleteArmed = false;
+        const btn = $("btnDelete");
+        btn.classList.remove("armed");
+        btn.textContent = "Delete";
+      }
+
+      function openNewModal() {
+        resetDeleteButton();
+        $("dlgTitle").textContent = "New Tracker Item";
+        $("eId").value = "";
+        $("eTitle").value = "";
+        $("eKind").value = "bug";
+        $("eMilestone").value = "M1";
+        $("eSpec").value = "";
+        $("eStatus").value = "todo";
+        $("ePriority").value = "P1";
+        $("eOrder").value = String(state.items.length + 1);
+        $("eNote").value = "";
+        $("btnDelete").hidden = true;
+        $("itemDialog").showModal();
+        $("eTitle").focus();
+      }
+
+      function openEditModal(id) {
+        const item = state.items.find((i) => i.id === id);
+        if (!item) return;
+        resetDeleteButton();
+        $("dlgTitle").textContent = `Edit ${item.spec || item.id}`;
+        $("eId").value = item.id;
+        $("eTitle").value = item.title;
+        $("eKind").value = item.kind;
+        $("eMilestone").value = item.milestone;
+        $("eSpec").value = item.spec || "";
+        $("eStatus").value = item.status;
+        $("ePriority").value = item.priority;
+        $("eOrder").value = String(item.order ?? 999);
+        $("eNote").value = item.note || "";
+        $("btnDelete").hidden = false;
+        $("itemDialog").showModal();
+      }
+
+      async function saveModal(e) {
+        e.preventDefault();
+        const id = $("eId").value.trim();
+        const now = Date.now();
+        const payload = {
+          title: $("eTitle").value.trim().slice(0, 200),
+          kind: $("eKind").value,
+          milestone: $("eMilestone").value,
+          spec: $("eSpec").value.trim().slice(0, 20),
+          status: $("eStatus").value,
+          priority: $("ePriority").value,
+          order: Number.parseInt($("eOrder").value || "999", 10),
+          note: $("eNote").value.trim().slice(0, 2000),
+          updatedAt: now,
+        };
+        if (!payload.title) return;
+
+        if (id) {
+          const existing = state.items.find((i) => i.id === id);
+          if (existing) Object.assign(existing, payload);
+          toast(`Saved ${payload.spec || id}`);
+        } else {
+          const newId =
+            payload.spec && !state.items.some((i) => i.id === payload.spec)
+              ? payload.spec
+              : `item-${now.toString(36)}`;
+          state.items.push({ id: newId, ...payload, createdAt: now });
+          toast(`Created ${newId}`);
+        }
+
+        $("itemDialog").close();
+        await persistData();
+        render();
+      }
+
+      async function handleDelete() {
+        const id = $("eId").value.trim();
+        if (!id) return;
+        if (!deleteArmed) {
+          deleteArmed = true;
+          $("btnDelete").classList.add("armed");
+          $("btnDelete").textContent = "Confirm delete?";
+          return;
+        }
+        state.items = state.items.filter((i) => i.id !== id);
+        $("itemDialog").close();
+        await persistData();
+        render();
+        toast(`Deleted ${id}`);
+      }
+
+      function wireEvents() {
+        document.querySelectorAll(".nav-tab").forEach((btn) => {
+          btn.addEventListener("click", () => setView(btn.dataset.view));
+        });
+
+        $("btnNew").addEventListener("click", openNewModal);
+        $("btnCloseDlg").addEventListener("click", () => $("itemDialog").close());
+        $("btnCancel").addEventListener("click", () => $("itemDialog").close());
+        $("itemForm").addEventListener("submit", saveModal);
+        $("btnDelete").addEventListener("click", handleDelete);
+
+        $("fSearch").addEventListener("input", (e) => {
+          filters.search = e.target.value;
+          renderBoard();
+        });
+        $("fKind").addEventListener("change", (e) => {
+          filters.kind = e.target.value;
+          renderBoard();
+        });
+        $("fMilestone").addEventListener("change", (e) => {
+          filters.milestone = e.target.value;
+          renderBoard();
+        });
+        $("fPriority").addEventListener("change", (e) => {
+          filters.priority = e.target.value;
+          renderBoard();
+        });
+        $("fWipLimit").addEventListener("change", async (e) => {
+          const v = Math.max(1, Math.min(50, Number.parseInt(e.target.value || "5", 10)));
+          state.wipLimit = v;
+          await persistData();
+          render();
+        });
+        $("btnClearFilters").addEventListener("click", () => {
+          filters.search = filters.kind = filters.milestone = filters.priority = "";
+          $("fSearch").value = $("fKind").value = $("fMilestone").value = $("fPriority").value = "";
+          renderBoard();
+        });
+
+        $("btnExport").addEventListener("click", () => {
+          const blob = new Blob([JSON.stringify(state, null, 2) + "\n"], {
+            type: "application/json",
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "items.json";
+          a.click();
+          URL.revokeObjectURL(a.href);
+          toast("Downloaded items.json");
+        });
+
+        $("btnImport").addEventListener("click", () => $("fileImport").click());
+        $("fileImport").addEventListener("change", async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          try {
+            const parsed = JSON.parse(await file.text());
+            if (!Array.isArray(parsed.items)) throw new Error("Missing items array");
+            state = parsed;
+            await persistData();
+            render();
+            toast(`Imported ${state.items.length} items`);
+          } catch (err) {
+            toast(`Import failed: ${err.message}`);
+          } finally {
+            e.target.value = "";
+          }
+        });
+
+        const savedTheme = localStorage.getItem("rosforge-tracker-theme") || "dark";
+        document.documentElement.dataset.theme = savedTheme;
+        $("btnTheme").addEventListener("click", () => {
+          const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+          document.documentElement.dataset.theme = next;
+          localStorage.setItem("rosforge-tracker-theme", next);
+        });
+
+        document.addEventListener("keydown", (e) => {
+          const tag = document.activeElement?.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+          if (e.key === "n" || e.key === "N") {
+            e.preventDefault();
+            openNewModal();
+          } else if (e.key === "/") {
+            e.preventDefault();
+            setView("board");
+            $("fSearch").focus();
+          }
+        });
+
+        window.addEventListener("hashchange", () => {
+          const v = location.hash === "#board" ? "board" : "dashboard";
+          setView(v);
+        });
+      }
+
+      (async function init() {
+        wireEvents();
+        await loadData();
+        const initialView = location.hash === "#board" ? "board" : "dashboard";
+        setView(initialView);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,94 @@
+---
+title: RosForge
+description: Visual ROS 2 Jazzy node-graph IDE with deterministic Python & C++ code generation.
+template: splash
+hero:
+  tagline: Visual ROS 2 Jazzy node-graph IDE with deterministic Python & C++ code generation and protected user code regions.
+  actions:
+    - text: Get Started
+      link: /RosForge/guides/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: Pub-Sub Tutorial
+      link: /RosForge/tutorials/pubsub/
+      icon: open-book
+      variant: secondary
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Why RosForge?
+
+<CardGrid stagger>
+  <Card title="Visual ROS 2 Graph Canvas" icon="puzzle">
+    Design <code>ament_python</code> and <code>ament_cmake</code> packages, ROS nodes, topics, services, actions, parameters, timers, QoS profiles, and launch files on an interactive node-graph canvas with ELK auto-layout.
+  </Card>
+  <Card title="Live Graph Validation" icon="approve-check">
+    Catch invalid ROS 2 names, duplicate identifiers, malformed interfaces, parameter type mismatches, orphan channels, and QoS incompatibilities before generating a single file.
+  </Card>
+  <Card title="Deterministic Python & C++ Codegen" icon="rocket">
+    Emit clean, buildable <code>ament_python</code> and <code>-Wall -Wextra -Wpedantic</code>-clean C++17 <code>ament_cmake</code> packages with automatic dependency derivation and unified diff preview.
+  </Card>
+  <Card title="Protected User Regions" icon="pencil">
+    Write custom callback and initialization logic inside <code>rosforge:user</code> fences keyed by stable UUIDs—preserving your code safely across renames and regenerations.
+  </Card>
+</CardGrid>
+
+## Documentation
+
+<CardGrid>
+  <LinkCard
+    title="Getting Started"
+    description="Install prerequisites (ROS 2 Jazzy, Rust, Node/pnpm), launch RosForge on native Ubuntu 24.04 or Windows WSL2/WSLg, and confirm the ROS 2 environment check is green."
+    href="/RosForge/guides/getting-started/"
+  />
+  <LinkCard
+    title="Feature Walkthrough"
+    description="Tour every panel of the IDE—Toolbar, Palette & Outline, Graph Canvas, Inspector, Problems/Output panel, Interface Catalog, Codegen Preview, Protected Regions, and keyboard shortcuts."
+    href="/RosForge/guides/features/"
+  />
+  <LinkCard
+    title="Tutorial: Simple Pub-Sub Example"
+    description="Build a Python talker + C++ listener over /chatter (std_msgs/msg/String), implement callbacks in protected regions, verify safe regeneration, compile with colcon, and run live."
+    href="/RosForge/tutorials/pubsub/"
+  />
+  <LinkCard
+    title="Product & Technical Specification"
+    description="Data model, IPC contract, milestone plan (M0–M6), and acceptance criteria in SPEC.md on GitHub."
+    href="https://github.com/Supragy352/RosForge/blob/main/SPEC.md"
+  />
+</CardGrid>
+
+## How RosForge Organizes a Workspace
+
+When you open or create a workspace folder in RosForge, it creates and maintains a standard ROS 2 layout alongside a single metadata file:
+
+```text
+<workspace>/
+├── .rosforge.json          # Canonical graph model, canvas positions, and file hashes
+├── src/                    # Standard ROS 2 workspace source directory
+│   ├── <py_pkg>/           # Generated ament_python package
+│   │   ├── package.xml
+│   │   ├── setup.py
+│   │   ├── setup.cfg
+│   │   ├── resource/<py_pkg>
+│   │   ├── <py_pkg>/
+│   │   │   ├── __init__.py
+│   │   │   └── <node>.py
+│   │   └── launch/*.launch.py
+│   └── <cpp_pkg>/          # Generated ament_cmake package
+│       ├── package.xml
+│       ├── CMakeLists.txt
+│       ├── src/<node>.cpp
+│       └── launch/*.launch.py
+├── build/                  # Created by `colcon build`
+├── install/                # Created by `colcon build`
+└── log/                    # Created by `colcon build`
+```
+
+Because RosForge emits standard ROS 2 packages under `src/`, your workspace builds cleanly with `colcon` both inside and outside RosForge—no proprietary runtime or lock-in.
+
+## Reference & Planning
+
+- [**Product & Technical Specification (`SPEC.md`)**](https://github.com/Supragy352/RosForge/blob/main/SPEC.md) — Data model, IPC contract, milestone plan (`M0`–`M6`), and acceptance criteria.
+- [**Progress Tracker (`tracker/items.json`)**](https://github.com/Supragy352/RosForge/blob/main/tracker/items.json) — Live feature/bug/issue tracker (`node scripts/tracker.mjs serve` to open the Kanban UI).
