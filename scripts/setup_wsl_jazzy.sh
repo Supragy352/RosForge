@@ -15,7 +15,7 @@ if ! id -u "${TARGET_USER}" >/dev/null 2>&1; then
     useradd -m -s /bin/bash -G sudo "${TARGET_USER}"
   fi
 fi
-usermod -aG sudo "${TARGET_USER}"
+usermod -aG sudo,video,render "${TARGET_USER}" || usermod -aG sudo "${TARGET_USER}"
 echo "${TARGET_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${TARGET_USER}"
 chmod 0440 "/etc/sudoers.d/${TARGET_USER}"
 
@@ -89,6 +89,7 @@ su - "${TARGET_USER}" -c '
   grep -q "cargo/env" "$HOME/.bashrc" || echo "source \"\$HOME/.cargo/env\"" >> "$HOME/.bashrc"
   grep -q "CARGO_TARGET_DIR" "$HOME/.bashrc" || echo "export CARGO_TARGET_DIR=\"\$HOME/.cache/rosforge-target\"" >> "$HOME/.bashrc"
   grep -q "WEBKIT_DISABLE_DMABUF_RENDERER" "$HOME/.bashrc" || echo "export WEBKIT_DISABLE_DMABUF_RENDERER=1" >> "$HOME/.bashrc"
+  grep -q "WEBKIT_DISABLE_COMPOSITING_MODE" "$HOME/.bashrc" || echo "export WEBKIT_DISABLE_COMPOSITING_MODE=1" >> "$HOME/.bashrc"
 '
 
 echo "=== [6/6] Verification ==="

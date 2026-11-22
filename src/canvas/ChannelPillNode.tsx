@@ -22,10 +22,12 @@ export const ChannelPillNode = memo(function ChannelPillNode({
   return (
     <div
       className={`relative min-w-[200px] max-w-[260px] rounded-full border-2 bg-white px-4 py-2 shadow-sm transition-all dark:bg-slate-900 ${
-        selected ? "ring-2 ring-sky-500/40" : ""
+        selected
+          ? "ring-4 ring-sky-400/45 shadow-lg shadow-sky-500/25"
+          : ""
       }`}
       style={{
-        borderColor: hasError ? "#f43f5e" : accent,
+        borderColor: selected ? "#38bdf8" : hasError ? "#f43f5e" : accent,
       }}
     >
       <Handle

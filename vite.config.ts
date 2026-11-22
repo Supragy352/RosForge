@@ -6,6 +6,9 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
+  optimizeDeps: {
+    entries: ["index.html"],
+  },
   server: {
     port: 1420,
     strictPort: true,
@@ -18,7 +21,12 @@ export default defineConfig({
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      ignored: [
+        "**/src-tauri/**",
+        "**/docs/**",
+        "**/tracker/**",
+        "**/wsl-ubuntu-24.04/**",
+      ],
     },
   },
   test: {

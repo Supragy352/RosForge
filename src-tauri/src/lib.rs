@@ -56,6 +56,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::show_interface,
             commands::preview_generate,
             commands::apply_generate,
+            commands::open_devtools,
         ])
         .typ::<Project>()
         .typ::<Diagnostic>()

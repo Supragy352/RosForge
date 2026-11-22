@@ -9,6 +9,8 @@ export interface PackageGroupData extends Record<string, unknown> {
   lang: PackageLang;
   nodeCount: number;
   hasError: boolean;
+  expandLeft?: number;
+  expandTop?: number;
   onQuickAddNode: (pkgId: string) => void;
 }
 
@@ -19,12 +21,20 @@ export const PackageGroupNode = memo(function PackageGroupNode({
   selected,
 }: NodeProps<PackageFlowNode>) {
   const isPy = data.lang === "python";
+  const expandLeft = data.expandLeft ?? 0;
+  const expandTop = data.expandTop ?? 0;
 
   return (
     <div
-      className={`h-full w-full rounded-xl border-2 border-dashed transition-colors ${
+      style={{
+        marginLeft: expandLeft ? -expandLeft : undefined,
+        marginTop: expandTop ? -expandTop : undefined,
+        width: expandLeft ? `calc(100% + ${expandLeft}px)` : "100%",
+        height: expandTop ? `calc(100% + ${expandTop}px)` : "100%",
+      }}
+      className={`rounded-xl border-2 border-dashed transition-colors ${
         selected
-          ? "border-sky-500 bg-sky-500/[0.06] dark:bg-sky-400/[0.06]"
+          ? "border-sky-400 bg-sky-500/[0.08] ring-2 ring-sky-400/40 dark:border-sky-400 dark:bg-sky-400/[0.08]"
           : data.hasError
             ? "border-rose-500/70 bg-rose-500/[0.04]"
             : "border-slate-300/90 bg-slate-100/50 dark:border-slate-700/90 dark:bg-slate-900/45"
@@ -34,8 +44,8 @@ export const PackageGroupNode = memo(function PackageGroupNode({
         minWidth={290}
         minHeight={180}
         isVisible={selected}
-        lineClassName="!border-sky-500"
-        handleClassName="!h-2.5 !w-2.5 !rounded-sm !bg-sky-500 !border-slate-950"
+        lineClassName="!border-sky-400"
+        handleClassName="!h-2.5 !w-2.5 !rounded-sm !bg-sky-400 !border-slate-950"
       />
       <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-800/80">
         <div className="flex min-w-0 items-center gap-2">

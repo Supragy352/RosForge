@@ -30,7 +30,7 @@ sha2 = "0.10"
 similar = "2"
 specta = { version = "=2.0.0-rc.28", features = ["derive", "function"] }
 specta-typescript = "=0.0.15"
-tauri = { version = "2", default-features = false, features = ["wry", "compression", "dynamic-acl", "x11", "dbus"] }
+tauri = { version = "2", default-features = false, features = ["wry", "compression", "dynamic-acl", "x11", "dbus", "devtools"] }
 tauri-specta = { version = "=2.0.0-rc.29", features = ["derive", "typescript"] }
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "process", "rt-multi-thread", "sync", "time"] }

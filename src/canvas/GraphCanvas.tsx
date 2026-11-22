@@ -18,6 +18,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
+  type EdgeChange,
   type FinalConnectionState,
   type Node,
   type NodeChange,
@@ -38,11 +39,16 @@ import {
 import type { ChannelKind, PortKind, Project } from "../bindings";
 import { useAppStore } from "../store/useAppStore";
 import { useProjectStore } from "../store/useProjectStore";
+import { ChannelEdge, type ChannelFlowEdge } from "./ChannelEdge";
 import { channelColorForType } from "./channelColors";
 import { ChannelPillNode, type ChannelFlowNode } from "./ChannelPillNode";
 import {
   PACKAGE_MIN_HEIGHT,
   PACKAGE_MIN_WIDTH,
+  PKG_PAD_BOTTOM,
+  PKG_PAD_LEFT,
+  PKG_PAD_RIGHT,
+  PKG_PAD_TOP,
   ROS_NODE_WIDTH,
   estimateNodeHeight,
 } from "./layout";
@@ -61,6 +67,10 @@ const nodeTypes = {
   channelPill: ChannelPillNode,
 };
 
+const edgeTypes = {
+  channelEdge: ChannelEdge,
+};
+
 interface QuickAddState {
   screenX: number;
   screenY: number;
@@ -76,11 +86,20 @@ interface PendingRolePrompt {
   kind: "service" | "action";
 }
 
+interface MeasuredSize {
+  width: number;
+  height: number;
+}
+
 function buildFlowElements(
   project: Project,
   diagnostics: Array<{ severity: string; targetId?: string | null }>,
-  onQuickAddNode: (pkgId: string) => void
-): { nodes: AnyFlowNode[]; edges: Edge[] } {
+  onQuickAddNode: (pkgId: string) => void,
+  livePositions: Record<string, { x: number; y: number }>,
+  measuredSizes: Record<string, MeasuredSize>,
+  selectedNodeIds: Set<string>,
+  selectedEdgeIds: Set<string>
+): { nodes: AnyFlowNode[]; edges: ChannelFlowEdge[] } {
   const errorTargets = new Set(
     diagnostics
       .filter((d) => d.severity === "error" && d.targetId)
@@ -94,43 +113,71 @@ function buildFlowElements(
 
   const channelsById = new Map(project.channels.map((c) => [c.id, c]));
   const nodes: AnyFlowNode[] = [];
-  const edges: Edge[] = [];
+  const edges: ChannelFlowEdge[] = [];
 
   for (const pkg of project.packages) {
-    // Compute package bounds dynamically from its children
+    // Compute package bounds dynamically in ALL 4 directions using live positions & real measured sizes
+    let minChildX = PKG_PAD_LEFT;
+    let minChildY = PKG_PAD_TOP;
     let maxRight = PACKAGE_MIN_WIDTH;
     let maxBottom = PACKAGE_MIN_HEIGHT;
+
     pkg.nodes.forEach((n, idx) => {
-      const pos = project.canvas.positions[n.id] ?? {
-        x: 24,
-        y: 56 + idx * 150,
+      const savedPos = project.canvas.positions[n.id] ?? {
+        x: PKG_PAD_LEFT,
+        y: PKG_PAD_TOP + idx * 170,
       };
-      const rx = (pos.x ?? 24) + ROS_NODE_WIDTH + 24;
-      const rb = (pos.y ?? 56) + estimateNodeHeight(n.ports.length) + 28;
+      const effPos = livePositions[n.id] ?? {
+        x: savedPos.x ?? PKG_PAD_LEFT,
+        y: savedPos.y ?? PKG_PAD_TOP + idx * 170,
+      };
+      const measured = measuredSizes[n.id];
+      const nodeW = Math.max(measured?.width ?? 0, ROS_NODE_WIDTH);
+      const nodeH = Math.max(measured?.height ?? 0, estimateNodeHeight(n.ports));
+
+      if (effPos.x < minChildX) minChildX = effPos.x;
+      if (effPos.y < minChildY) minChildY = effPos.y;
+      const rx = effPos.x + nodeW + PKG_PAD_RIGHT;
+      const rb = effPos.y + nodeH + PKG_PAD_BOTTOM;
       if (rx > maxRight) maxRight = rx;
       if (rb > maxBottom) maxBottom = rb;
     });
 
-    const pkgPos = project.canvas.positions[pkg.id] ?? { x: 40, y: 60 };
+    const expandLeft = Math.max(0, Math.round(PKG_PAD_LEFT - minChildX));
+    const expandTop = Math.max(0, Math.round(PKG_PAD_TOP - minChildY));
+
+    const savedPkgPos = project.canvas.positions[pkg.id] ?? { x: 40, y: 60 };
+    const effPkgPos = livePositions[pkg.id] ?? {
+      x: savedPkgPos.x ?? 40,
+      y: savedPkgPos.y ?? 60,
+    };
+
     nodes.push({
       id: pkg.id,
       type: "packageGroup",
-      position: { x: pkgPos.x ?? 40, y: pkgPos.y ?? 60 },
-      style: { width: maxRight, height: maxBottom },
+      position: effPkgPos,
+      selected: selectedNodeIds.has(pkg.id),
+      style: { width: Math.round(maxRight), height: Math.round(maxBottom) },
       data: {
         packageId: pkg.id,
         name: pkg.name,
         lang: pkg.lang,
         nodeCount: pkg.nodes.length,
         hasError: errorTargets.has(pkg.id),
+        expandLeft,
+        expandTop,
         onQuickAddNode,
       },
     });
 
     pkg.nodes.forEach((rosNode, idx) => {
-      const nodePos = project.canvas.positions[rosNode.id] ?? {
-        x: 24,
-        y: 56 + idx * 150,
+      const savedNodePos = project.canvas.positions[rosNode.id] ?? {
+        x: PKG_PAD_LEFT,
+        y: PKG_PAD_TOP + idx * 170,
+      };
+      const effNodePos = livePositions[rosNode.id] ?? {
+        x: savedNodePos.x ?? PKG_PAD_LEFT,
+        y: savedNodePos.y ?? PKG_PAD_TOP + idx * 170,
       };
 
       const portSummaries: ResolvedPortSummary[] = rosNode.ports.map((pt) => {
@@ -159,7 +206,8 @@ function buildFlowElements(
         id: rosNode.id,
         type: "rosNode",
         parentId: pkg.id,
-        position: { x: nodePos.x ?? 24, y: nodePos.y ?? 56 + idx * 150 },
+        position: effNodePos,
+        selected: selectedNodeIds.has(rosNode.id),
         data: {
           packageId: pkg.id,
           lang: pkg.lang,
@@ -186,22 +234,25 @@ function buildFlowElements(
           action_server: "act srv",
           action_client: "act cli",
         };
+        const edgeId = `port:${pkg.id}:${rosNode.id}:${pt.id}`;
+        const isAction =
+          pt.kind === "action_client" || pt.kind === "action_server";
         edges.push({
-          id: `port:${pkg.id}:${rosNode.id}:${pt.id}`,
+          id: edgeId,
+          type: "channelEdge",
           source: isOutgoing ? rosNode.id : ch.id,
           sourceHandle: "out",
           target: isOutgoing ? ch.id : rosNode.id,
           targetHandle: "in",
-          label: labelMap[pt.kind],
-          animated: pt.kind === "action_client" || pt.kind === "action_server",
-          style: { stroke: color, strokeWidth: 2 },
-          labelStyle: { fill: color, fontSize: 10, fontWeight: 600 },
-          labelBgStyle: { fill: "#0f172a", fillOpacity: 0.85 },
-          labelBgPadding: [4, 2],
-          labelBgBorderRadius: 4,
+          selected: selectedEdgeIds.has(edgeId),
+          data: {
+            label: labelMap[pt.kind],
+            color,
+            dashed: isAction,
+          },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color,
+            color: selectedEdgeIds.has(edgeId) ? "#38bdf8" : color,
             width: 16,
             height: 16,
           },
@@ -211,14 +262,19 @@ function buildFlowElements(
   }
 
   project.channels.forEach((ch, idx) => {
-    const pos = project.canvas.positions[ch.id] ?? {
+    const savedPos = project.canvas.positions[ch.id] ?? {
       x: 420,
       y: 90 + idx * 100,
+    };
+    const effPos = livePositions[ch.id] ?? {
+      x: savedPos.x ?? 420,
+      y: savedPos.y ?? 90 + idx * 100,
     };
     nodes.push({
       id: ch.id,
       type: "channelPill",
-      position: { x: pos.x ?? 420, y: pos.y ?? 90 + idx * 100 },
+      position: effPos,
+      selected: selectedNodeIds.has(ch.id),
       data: {
         channel: ch,
         hasError: errorTargets.has(ch.id),
@@ -239,6 +295,7 @@ function GraphCanvasInner({
 }) {
   const project = useProjectStore((s) => s.project);
   const diagnostics = useProjectStore((s) => s.diagnostics);
+  const storeSelected = useProjectStore((s) => s.selected);
   const focusTargetId = useProjectStore((s) => s.focusTargetId);
   const requestFocusTarget = useProjectStore((s) => s.requestFocusTarget);
   const setSelected = useProjectStore((s) => s.setSelected);
@@ -257,7 +314,6 @@ function GraphCanvasInner({
 
   const rf = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const selectedIdsRef = useRef<string[]>([]);
 
   const [quickAdd, setQuickAdd] = useState<QuickAddState | null>(null);
   const [rolePrompt, setRolePrompt] = useState<PendingRolePrompt | null>(null);
@@ -265,6 +321,29 @@ function GraphCanvasInner({
   const [livePositions, setLivePositions] = useState<
     Record<string, { x: number; y: number }>
   >({});
+  const [measuredSizes, setMeasuredSizes] = useState<
+    Record<string, MeasuredSize>
+  >({});
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  // Sync external selection (Outline click, Problems click, Ctrl+F jump, newly added item) onto canvas
+  useEffect(() => {
+    if (!storeSelected) {
+      setSelectedNodeIds((prev) => (prev.size === 0 ? prev : new Set()));
+      return;
+    }
+    const targetId =
+      storeSelected.kind === "port" ? storeSelected.nodeId : storeSelected.id;
+    setSelectedNodeIds((prev) => {
+      if (prev.size === 1 && prev.has(targetId)) return prev;
+      return new Set([targetId]);
+    });
+  }, [storeSelected]);
 
   const handleQuickAddNode = useCallback(
     (pkgId: string) => {
@@ -273,18 +352,26 @@ function GraphCanvasInner({
     [addNode]
   );
 
-  const { nodes: baseNodes, edges } = useMemo(() => {
+  const { nodes, edges } = useMemo(() => {
     if (!project) return { nodes: [], edges: [] };
-    return buildFlowElements(project, diagnostics, handleQuickAddNode);
-  }, [project, diagnostics, handleQuickAddNode]);
-
-  // Overlay transient dragging positions smoothly without polluting undo history
-  const nodes = useMemo(() => {
-    if (Object.keys(livePositions).length === 0) return baseNodes;
-    return baseNodes.map((n) =>
-      livePositions[n.id] ? { ...n, position: livePositions[n.id] } : n
+    return buildFlowElements(
+      project,
+      diagnostics,
+      handleQuickAddNode,
+      livePositions,
+      measuredSizes,
+      selectedNodeIds,
+      selectedEdgeIds
     );
-  }, [baseNodes, livePositions]);
+  }, [
+    project,
+    diagnostics,
+    handleQuickAddNode,
+    livePositions,
+    measuredSizes,
+    selectedNodeIds,
+    selectedEdgeIds,
+  ]);
 
   // Focus & zoom to target when requested (Problems panel click or Ctrl+F search)
   useEffect(() => {
@@ -296,22 +383,49 @@ function GraphCanvasInner({
     requestFocusTarget(null);
   }, [focusTargetId, project, rf, requestFocusTarget]);
 
-  // Keyboard shortcuts inside canvas (Ctrl+D duplicate, Delete/Backspace)
+  // Keyboard shortcuts inside canvas (Ctrl+D duplicate, Delete/Backspace for nodes & edges)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const tag = (document.activeElement as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
       if (!project) return;
 
+      const activeNodeIds =
+        selectedNodeIds.size > 0
+          ? Array.from(selectedNodeIds)
+          : storeSelected && storeSelected.kind !== "port"
+            ? [storeSelected.id]
+            : [];
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
-        if (selectedIdsRef.current.length > 0) {
+        if (activeNodeIds.length > 0) {
           e.preventDefault();
-          duplicateIds(selectedIdsRef.current);
+          duplicateIds(activeNodeIds);
         }
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedIdsRef.current.length > 0) {
+        if (selectedEdgeIds.size > 0 || activeNodeIds.length > 0) {
           e.preventDefault();
-          deleteIds(selectedIdsRef.current);
+          if (selectedEdgeIds.size > 0) {
+            for (const edgeId of selectedEdgeIds) {
+              const parts = edgeId.split(":");
+              if (parts[0] === "port" && parts.length === 4) {
+                deletePort(parts[1], parts[2], parts[3]);
+              }
+            }
+            setSelectedEdgeIds(new Set());
+          }
+          if (activeNodeIds.length > 0) {
+            deleteIds(activeNodeIds);
+            setSelectedNodeIds(new Set());
+          }
         }
       } else if (e.key === "Escape") {
         setQuickAdd(null);
@@ -321,19 +435,88 @@ function GraphCanvasInner({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [project, duplicateIds, deleteIds, searchOpen, onCloseSearch]);
+  }, [
+    project,
+    selectedNodeIds,
+    selectedEdgeIds,
+    storeSelected,
+    duplicateIds,
+    deleteIds,
+    deletePort,
+    searchOpen,
+    onCloseSearch,
+  ]);
 
   const onNodesChange = useCallback((changes: NodeChange<AnyFlowNode>[]) => {
     const dragUpdates: Record<string, { x: number; y: number }> = {};
     let hasDrag = false;
+    const dimUpdates: Record<string, MeasuredSize> = {};
+    let hasDim = false;
+    let selectChanges: Array<{ id: string; selected: boolean }> | null = null;
+
     for (const ch of changes) {
       if (ch.type === "position" && ch.position && ch.dragging) {
         dragUpdates[ch.id] = ch.position;
         hasDrag = true;
+      } else if (ch.type === "select") {
+        if (!selectChanges) selectChanges = [];
+        selectChanges.push({ id: ch.id, selected: ch.selected });
+      } else if (ch.type === "dimensions" && ch.dimensions) {
+        const w = Math.round(ch.dimensions.width);
+        const h = Math.round(ch.dimensions.height);
+        if (w > 0 && h > 0) {
+          dimUpdates[ch.id] = { width: w, height: h };
+          hasDim = true;
+        }
       }
     }
+
     if (hasDrag) {
       setLivePositions((prev) => ({ ...prev, ...dragUpdates }));
+    }
+    if (hasDim) {
+      setMeasuredSizes((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const [id, sz] of Object.entries(dimUpdates)) {
+          const cur = prev[id];
+          if (!cur || cur.width !== sz.width || cur.height !== sz.height) {
+            next[id] = sz;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }
+    if (selectChanges) {
+      setSelectedNodeIds((prev) => {
+        const next = new Set(prev);
+        for (const sc of selectChanges) {
+          if (sc.selected) next.add(sc.id);
+          else next.delete(sc.id);
+        }
+        return next;
+      });
+    }
+  }, []);
+
+  const onEdgesChange = useCallback((changes: EdgeChange<ChannelFlowEdge>[]) => {
+    let selectChanges: Array<{ id: string; selected: boolean }> | null = null;
+    for (const ch of changes) {
+      if (ch.type === "select") {
+        if (!selectChanges) selectChanges = [];
+        selectChanges.push({ id: ch.id, selected: ch.selected });
+      }
+    }
+    if (selectChanges) {
+      setSelectedEdgeIds((prev) => {
+        const next = new Set(prev);
+        for (const sc of selectChanges) {
+          if (sc.selected) next.add(sc.id);
+          else next.delete(sc.id);
+        }
+        return next;
+      });
     }
   }, []);
 
@@ -372,11 +555,57 @@ function GraphCanvasInner({
             );
             if (confirmed) {
               moveNodeToPackage(draggedNode.id, draggedNode.parentId, otherPkg.id, {
-                x: Math.max(16, Math.round(absX - ox)),
-                y: Math.max(48, Math.round(absY - oy)),
+                x: Math.max(PKG_PAD_LEFT, Math.round(absX - ox)),
+                y: Math.max(PKG_PAD_TOP, Math.round(absY - oy)),
               });
               return;
             }
+          }
+        }
+
+        // Normalize package frame if child was dragged past the left or top padding
+        if (currentPkg) {
+          const updatedChildX = Math.round(draggedNode.position.x);
+          const updatedChildY = Math.round(draggedNode.position.y);
+
+          let minX = updatedChildX;
+          let minY = updatedChildY;
+          currentPkg.nodes.forEach((n, idx) => {
+            if (n.id === draggedNode.id) return;
+            const p = project.canvas.positions[n.id] ?? {
+              x: PKG_PAD_LEFT,
+              y: PKG_PAD_TOP + idx * 170,
+            };
+            if ((p.x ?? PKG_PAD_LEFT) < minX) minX = p.x ?? PKG_PAD_LEFT;
+            if ((p.y ?? PKG_PAD_TOP) < minY) minY = p.y ?? PKG_PAD_TOP;
+          });
+
+          const shiftX = minX < PKG_PAD_LEFT ? PKG_PAD_LEFT - minX : 0;
+          const shiftY = minY < PKG_PAD_TOP ? PKG_PAD_TOP - minY : 0;
+
+          if (shiftX > 0 || shiftY > 0) {
+            const batch: Record<string, { x: number; y: number }> = {
+              [currentPkg.id]: {
+                x: Math.round((currentPkgPos.x ?? 40) - shiftX),
+                y: Math.round((currentPkgPos.y ?? 60) - shiftY),
+              },
+            };
+            currentPkg.nodes.forEach((n, idx) => {
+              const baseX =
+                n.id === draggedNode.id
+                  ? updatedChildX
+                  : (project.canvas.positions[n.id]?.x ?? PKG_PAD_LEFT);
+              const baseY =
+                n.id === draggedNode.id
+                  ? updatedChildY
+                  : (project.canvas.positions[n.id]?.y ?? PKG_PAD_TOP + idx * 170);
+              batch[n.id] = {
+                x: Math.round(baseX + shiftX),
+                y: Math.round(baseY + shiftY),
+              };
+            });
+            setPositions(batch);
+            return;
           }
         }
       }
@@ -471,8 +700,12 @@ function GraphCanvasInner({
 
   const onSelectionChange = useCallback(
     ({ nodes: selNodes }: OnSelectionChangeParams) => {
-      selectedIdsRef.current = selNodes.map((n) => n.id);
-      if (selNodes.length !== 1 || !project) return;
+      if (!project) return;
+      if (selNodes.length === 0) {
+        setSelected(null);
+        return;
+      }
+      if (selNodes.length !== 1) return;
       const first = selNodes[0];
       if (first.type === "packageGroup") {
         setSelected({ kind: "package", id: first.id });
@@ -508,7 +741,7 @@ function GraphCanvasInner({
       } else if (paletteKind === "node") {
         // Find package under cursor, or create one if none exists
         let targetPkgId: string | null = null;
-        let relPos = { x: 24, y: 56 };
+        let relPos = { x: PKG_PAD_LEFT, y: PKG_PAD_TOP };
         for (const pkg of project.packages) {
           const fn = rf.getNode(pkg.id);
           const px = fn?.position.x ?? project.canvas.positions[pkg.id]?.x ?? 0;
@@ -518,15 +751,19 @@ function GraphCanvasInner({
           if (rounded.x >= px && rounded.x <= px + pw && rounded.y >= py && rounded.y <= py + ph) {
             targetPkgId = pkg.id;
             relPos = {
-              x: Math.max(16, Math.round(rounded.x - px)),
-              y: Math.max(48, Math.round(rounded.y - py)),
+              x: Math.max(PKG_PAD_LEFT, Math.round(rounded.x - px)),
+              y: Math.max(PKG_PAD_TOP, Math.round(rounded.y - py)),
             };
             break;
           }
         }
         if (!targetPkgId) {
           targetPkgId =
-            project.packages[0]?.id ?? addPackage("python", { x: rounded.x - 24, y: rounded.y - 56 });
+            project.packages[0]?.id ??
+            addPackage("python", {
+              x: rounded.x - PKG_PAD_LEFT,
+              y: rounded.y - PKG_PAD_TOP,
+            });
         }
         if (targetPkgId) {
           addNode(targetPkgId, relPos);
@@ -711,8 +948,10 @@ function GraphCanvasInner({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         colorMode={theme === "dark" ? "dark" : "light"}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
@@ -720,6 +959,8 @@ function GraphCanvasInner({
         onSelectionChange={onSelectionChange}
         onPaneClick={() => {
           setSelected(null);
+          setSelectedNodeIds(new Set());
+          setSelectedEdgeIds(new Set());
           setQuickAdd(null);
         }}
         onDragOver={onDragOver}

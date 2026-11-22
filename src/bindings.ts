@@ -17,6 +17,7 @@ export const commands = {
 	showInterface: (interfaceType: string, options?: InvokeOptions) => __TAURI_INVOKE<InterfaceDefinition>("show_interface", { interfaceType }, options),
 	previewGenerate: (project: Project, options?: InvokeOptions) => __TAURI_INVOKE<GeneratePreview>("preview_generate", { project }, options),
 	applyGenerate: (project: Project, resolutions: { [key in string]: FileResolution }, options?: InvokeOptions) => __TAURI_INVOKE<ApplyGenerateResult>("apply_generate", { project, resolutions }, options),
+	openDevtools: (toggle: boolean | null, options?: InvokeOptions) => __TAURI_INVOKE<boolean>("open_devtools", { toggle }, options),
 };
 
 /* Types */

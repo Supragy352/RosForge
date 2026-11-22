@@ -41,9 +41,9 @@ export const RosNodeCard = memo(function RosNodeCard({
 
   return (
     <div
-      className={`relative w-[248px] rounded-xl border bg-white shadow-md transition-all dark:bg-slate-900 ${
+      className={`relative w-[248px] rounded-xl border-2 bg-white shadow-md transition-all dark:bg-slate-900 ${
         selected
-          ? "border-sky-500 ring-2 ring-sky-500/30"
+          ? "border-sky-400 ring-4 ring-sky-400/30 shadow-lg shadow-sky-500/20"
           : hasError
             ? "border-rose-500"
             : "border-slate-300 dark:border-slate-700"

@@ -39,7 +39,7 @@ If you are using the project's preconfigured WSL2 distro (`RosForge-Ubuntu-24.04
 wsl -d RosForge-Ubuntu-24.04 -- bash -lc 'cd /mnt/e/Dev/Robotics/RosForge && export CARGO_TARGET_DIR="$HOME/.cache/rosforge-target" && pnpm tauri dev'
 ```
 
-The Tauri desktop window opens directly on your Windows desktop via WSLg.
+The Tauri desktop window opens directly on your Windows desktop via WSLg (RosForge automatically configures WebKitGTK software/CPU rendering flags on WSL2 so you don't have to pass them manually).
 
 :::tip
 When creating or opening a ROS 2 workspace inside RosForge on WSL2, use a **Linux filesystem path** such as `/home/<user>/rosforge_ws` (or `/tmp/rosforge_ws` for quick experiments). Avoid `/mnt/c` or `/mnt/e` for `colcon build` workspaces—symlinks and CMake builds are dramatically faster on ext4.

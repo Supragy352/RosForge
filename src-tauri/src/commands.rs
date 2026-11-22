@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -231,4 +231,19 @@ pub fn apply_generate(
     }
     Ok(result)
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn open_devtools(app: AppHandle, toggle: Option<bool>) -> Result<bool, String> {
+    let win = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main webview window not found".to_string())?;
+    if toggle.unwrap_or(false) && win.is_devtools_open() {
+        win.close_devtools();
+        return Ok(false);
+    }
+    win.open_devtools();
+    Ok(true)
+}
+
 

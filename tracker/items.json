@@ -834,6 +834,97 @@
       "note": "",
       "createdAt": 1795290000000,
       "updatedAt": 1795290000000
+    },
+    {
+      "id": "item-mwrvsyit",
+      "title": "Selected nodes and channels are not highlighted on canvas",
+      "kind": "bug",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P0",
+      "order": 65,
+      "note": "Controlled ReactFlow onNodesChange ignored select changes, leaving node.selected always false.",
+      "createdAt": 1795354650821,
+      "updatedAt": 1795355337860
+    },
+    {
+      "id": "item-mwrvsykx",
+      "title": "Package frame boundaries only expand right/bottom, not left/top",
+      "kind": "bug",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P1",
+      "order": 66,
+      "note": "Dragging child nodes left or above header left them outside the dashed package border.",
+      "createdAt": 1795354650897,
+      "updatedAt": 1795355337944
+    },
+    {
+      "id": "item-mwrvsyn4",
+      "title": "Connection edge labels flicker (react-flow__edge-textbg)",
+      "kind": "bug",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P1",
+      "order": 67,
+      "note": "Default SVG EdgeText getBBox() re-measurement flickers under WebKitGTK CPU rendering; replace with EdgeLabelRenderer.",
+      "createdAt": 1795354650976,
+      "updatedAt": 1795355338030
+    },
+    {
+      "id": "item-mwrvsypa",
+      "title": "Package frame borders lack bottom padding around tall node cards",
+      "kind": "bug",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P1",
+      "order": 68,
+      "note": "estimateNodeHeight underestimated multi-group port rows; use group-aware estimation + measured DOM height + 32px bottom padding.",
+      "createdAt": 1795354651054,
+      "updatedAt": 1795355338125
+    },
+    {
+      "id": "item-mwrvsyrp",
+      "title": "Pressing Delete key does not delete selected nodes or edges",
+      "kind": "bug",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P0",
+      "order": 69,
+      "note": "Selection state was never persisted back into ReactFlow nodes/edges so selectedIdsRef stayed empty.",
+      "createdAt": 1795354651141,
+      "updatedAt": 1795355338225
+    },
+    {
+      "id": "item-mwrvsytr",
+      "title": "App startup is slow (~15-20s) under WSL2 pnpm tauri dev",
+      "kind": "bug",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P1",
+      "order": 70,
+      "note": "Vite crawls node_modules over /mnt/e 9P DrvFs on cold dev start. Add fast prebuilt launcher script.",
+      "createdAt": 1795354651215,
+      "updatedAt": 1795355338302
+    },
+    {
+      "id": "item-mwrvsyvu",
+      "title": "Add Web Inspector (F12) & Copy Debug Snapshot tool for bug reporting",
+      "kind": "feature",
+      "milestone": "M1",
+      "spec": "",
+      "status": "done",
+      "priority": "P1",
+      "order": 71,
+      "note": "Enable Tauri devtools command + toolbar Debug/Inspector menu.",
+      "createdAt": 1795354651290,
+      "updatedAt": 1795355338379
     }
   ]
 }

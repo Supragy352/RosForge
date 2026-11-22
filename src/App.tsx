@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Bug,
+  Check,
+  ClipboardCopy,
   FolderOpen,
   Hammer,
   LayoutGrid,
@@ -11,9 +14,11 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   Sun,
+  Terminal,
   Undo2,
   Workflow,
 } from "lucide-react";
+import { commands } from "./bindings";
 import { GraphCanvas } from "./canvas/GraphCanvas";
 import { computeAutoLayout } from "./canvas/layout";
 import { RosHealthBanner } from "./components/RosHealthBanner";
@@ -53,6 +58,9 @@ export default function App() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [layingOut, setLayingOut] = useState(false);
+  const [inspectMenuOpen, setInspectMenuOpen] = useState(false);
+  const [copiedSnapshot, setCopiedSnapshot] = useState(false);
+  const inspectMenuRef = useRef<HTMLDivElement | null>(null);
 
   const errorCount = diagnostics.filter((d) => d.severity === "error").length;
   const warningCount = diagnostics.filter((d) => d.severity === "warning").length;
@@ -62,6 +70,103 @@ export default function App() {
       void loadCatalog(false);
     });
   }, [bootstrap, loadCatalog]);
+
+  useEffect(() => {
+    if (!inspectMenuOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (
+        inspectMenuRef.current &&
+        !inspectMenuRef.current.contains(e.target as Node)
+      ) {
+        setInspectMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onPointerDown);
+    return () => window.removeEventListener("mousedown", onPointerDown);
+  }, [inspectMenuOpen]);
+
+  const handleOpenDevtools = useCallback(
+    async (toggle = false) => {
+      try {
+        await commands.openDevtools(toggle);
+      } catch (err) {
+        appendLog("error", `Failed to open Web Inspector: ${String(err)}`);
+      }
+    },
+    [appendLog]
+  );
+
+  const handleCopyDebugSnapshot = useCallback(async () => {
+    const pState = useProjectStore.getState();
+    const aState = useAppStore.getState();
+    const domNodes = Array.from(
+      document.querySelectorAll<HTMLElement>(".react-flow__node")
+    ).map((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        id: el.dataset.id ?? el.getAttribute("data-id"),
+        classes: el.className,
+        rect: {
+          x: Math.round(r.x),
+          y: Math.round(r.y),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+        },
+      };
+    });
+
+    const snapshot = {
+      capturedAt: new Date().toISOString(),
+      appVersion: aState.pingResult?.appVersion ?? "0.1.0",
+      platform: aState.pingResult?.platform ?? navigator.platform,
+      window: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+        theme: aState.settings.theme,
+      },
+      rosHealth: aState.rosHealth,
+      project: pState.project
+        ? {
+            name: pState.project.name,
+            workspacePath: pState.project.workspacePath,
+            dirty: pState.dirty,
+            counts: {
+              packages: pState.project.packages.length,
+              nodes: pState.project.packages.reduce((acc, p) => acc + p.nodes.length, 0),
+              channels: pState.project.channels.length,
+            },
+            positions: pState.project.canvas.positions,
+          }
+        : null,
+      selected: pState.selected,
+      domNodes,
+      diagnostics: pState.diagnostics,
+      recentLogs: pState.outputLog.slice(-15),
+    };
+
+    const text = JSON.stringify(snapshot, null, 2);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+
+    setCopiedSnapshot(true);
+    appendLog("info", "Copied RosForge debug snapshot JSON to clipboard.");
+    window.setTimeout(() => setCopiedSnapshot(false), 1800);
+  }, [appendLog]);
 
   const handleAutoLayout = useCallback(async () => {
     if (!project) return;
@@ -77,11 +182,17 @@ export default function App() {
     }
   }, [project, setPositions, appendLog]);
 
-  // Global keyboard shortcuts (SPEC §5 & F1.2 / F1.3 / F1.11)
+  // Global keyboard shortcuts (SPEC §5 & F1.2 / F1.3 / F1.11 + F12 Web Inspector)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
+
+      if (e.key === "F12" || (mod && e.shiftKey && key === "i")) {
+        e.preventDefault();
+        void handleOpenDevtools(true);
+        return;
+      }
 
       if (mod && key === "s") {
         e.preventDefault();
@@ -137,6 +248,7 @@ export default function App() {
     addPackage,
     addNode,
     addChannel,
+    handleOpenDevtools,
   ]);
 
   const canUndo = useProjectStore.temporal.getState().pastStates.length > 0;
@@ -309,6 +421,63 @@ export default function App() {
               <Moon className="h-4 w-4" />
             )}
           </button>
+
+          <div ref={inspectMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setInspectMenuOpen((v) => !v)}
+              aria-label="Inspect & Debug tools"
+              title="Web Inspector (F12) & Copy Debug Snapshot"
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                copiedSnapshot
+                  ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              {copiedSnapshot ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Bug className="h-3.5 w-3.5" />
+              )}
+              {copiedSnapshot ? "Copied!" : "Inspect"}
+            </button>
+
+            {inspectMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-lg border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspectMenuOpen(false);
+                    void handleOpenDevtools(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Terminal className="h-3.5 w-3.5 text-sky-500" />
+                    Open Web Inspector
+                  </span>
+                  <kbd className="rounded border border-slate-300 px-1 py-0.5 font-mono text-[10px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    F12
+                  </kbd>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspectMenuOpen(false);
+                    void handleCopyDebugSnapshot();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <ClipboardCopy className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Copy Debug Snapshot (JSON)</span>
+                </button>
+                <div className="mt-1 border-t border-slate-200 px-2.5 pt-1.5 text-[10px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  Shortcut: <span className="font-mono">F12</span> or{" "}
+                  <span className="font-mono">Ctrl+Shift+I</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
