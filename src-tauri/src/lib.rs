@@ -4,10 +4,14 @@ pub mod commands;
 pub mod model;
 pub mod project;
 pub mod ros_env;
+pub mod runner;
 pub mod settings;
 pub mod validate;
 
 use crate::model::{Diagnostic, Project};
+use crate::runner::{
+    BuildFinishedEvent, BuildOutputEvent, RunExitedEvent, RunOutputEvent, RunnerManager,
+};
 use crate::settings::{Settings, SettingsStore};
 use specta_typescript::Typescript;
 use std::path::Path;
@@ -18,6 +22,7 @@ pub struct AppState {
     pub settings_store: SettingsStore,
     pub settings: Mutex<Settings>,
     pub active_project: Mutex<Option<Project>>,
+    pub runner: RunnerManager,
 }
 
 impl AppState {
@@ -36,6 +41,7 @@ impl AppState {
             settings_store,
             settings: Mutex::new(settings),
             active_project: Mutex::new(None),
+            runner: RunnerManager::new(),
         }
     }
 }
@@ -57,9 +63,20 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::preview_generate,
             commands::apply_generate,
             commands::open_devtools,
+            commands::start_build,
+            commands::cancel_build,
+            commands::clean_workspace,
+            commands::start_run,
+            commands::stop_run,
+            commands::get_runner_status,
+            commands::open_in_editor,
         ])
         .typ::<Project>()
         .typ::<Diagnostic>()
+        .typ::<BuildOutputEvent>()
+        .typ::<BuildFinishedEvent>()
+        .typ::<RunOutputEvent>()
+        .typ::<RunExitedEvent>()
 }
 
 pub fn export_typescript_bindings(output_path: impl AsRef<Path>) -> Result<(), String> {
@@ -90,6 +107,7 @@ pub fn run() {
     }
 
     let app_state = AppState::initialize();
+    let runner_for_exit = app_state.runner.clone();
 
     tauri::Builder::default()
         .manage(app_state)
@@ -97,6 +115,11 @@ pub fn run() {
         .setup(move |app| {
             builder.mount_events(app);
             Ok(())
+        })
+        .on_window_event(move |_window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                runner_for_exit.stop_all();
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running RosForge Tauri application");

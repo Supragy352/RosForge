@@ -19,6 +19,7 @@ export interface RosNodeCardData extends Record<string, unknown> {
   ports: ResolvedPortSummary[];
   hasError: boolean;
   hasWarning: boolean;
+  isRunning?: boolean;
 }
 
 export type RosFlowNode = Node<RosNodeCardData, "rosNode">;
@@ -36,7 +37,7 @@ export const RosNodeCard = memo(function RosNodeCard({
   data,
   selected,
 }: NodeProps<RosFlowNode>) {
-  const { node, lang, ports, hasError, hasWarning } = data;
+  const { node, lang, ports, hasError, hasWarning, isRunning } = data;
   const isPy = lang === "python";
 
   return (
@@ -44,9 +45,11 @@ export const RosNodeCard = memo(function RosNodeCard({
       className={`relative w-[248px] rounded-xl border-2 bg-white shadow-md transition-all dark:bg-slate-900 ${
         selected
           ? "border-sky-400 ring-4 ring-sky-400/30 shadow-lg shadow-sky-500/20"
-          : hasError
-            ? "border-rose-500"
-            : "border-slate-300 dark:border-slate-700"
+          : isRunning
+            ? "border-emerald-400 ring-2 ring-emerald-400/25 shadow-md shadow-emerald-500/15"
+            : hasError
+              ? "border-rose-500"
+              : "border-slate-300 dark:border-slate-700"
       }`}
     >
       {/* Left target handle (Subscribe / Server / Incoming) */}
@@ -70,6 +73,15 @@ export const RosNodeCard = memo(function RosNodeCard({
       {/* Header */}
       <div className="flex items-center justify-between gap-2 rounded-t-[10px] border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/70">
         <div className="flex min-w-0 items-center gap-1.5">
+          {isRunning && (
+            <span
+              title="Node is running"
+              className="relative flex h-2.5 w-2.5 shrink-0"
+            >
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+          )}
           <span
             className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${
               isPy

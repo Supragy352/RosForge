@@ -28,7 +28,9 @@ import "@xyflow/react/dist/style.css";
 import {
   Box,
   Cpu,
+  ExternalLink,
   FolderOpen,
+  Play,
   Radio,
   Search,
   Sparkles,
@@ -39,6 +41,7 @@ import {
 import type { ChannelKind, PortKind, Project } from "../bindings";
 import { useAppStore } from "../store/useAppStore";
 import { useProjectStore } from "../store/useProjectStore";
+import { useRunnerStore } from "../store/useRunnerStore";
 import { ChannelEdge, type ChannelFlowEdge } from "./ChannelEdge";
 import { channelColorForType } from "./channelColors";
 import { ChannelPillNode, type ChannelFlowNode } from "./ChannelPillNode";
@@ -91,6 +94,14 @@ interface MeasuredSize {
   height: number;
 }
 
+interface NodeContextMenuState {
+  screenX: number;
+  screenY: number;
+  packageId: string;
+  nodeId: string;
+  nodeName: string;
+}
+
 function buildFlowElements(
   project: Project,
   diagnostics: Array<{ severity: string; targetId?: string | null }>,
@@ -98,7 +109,8 @@ function buildFlowElements(
   livePositions: Record<string, { x: number; y: number }>,
   measuredSizes: Record<string, MeasuredSize>,
   selectedNodeIds: Set<string>,
-  selectedEdgeIds: Set<string>
+  selectedEdgeIds: Set<string>,
+  runningNodeIds: Set<string>
 ): { nodes: AnyFlowNode[]; edges: ChannelFlowEdge[] } {
   const errorTargets = new Set(
     diagnostics
@@ -215,6 +227,7 @@ function buildFlowElements(
           ports: portSummaries,
           hasError: nodeHasError,
           hasWarning: nodeHasWarning,
+          isRunning: runningNodeIds.has(rosNode.id),
         },
       });
 
@@ -311,12 +324,17 @@ function GraphCanvasInner({
   const setWorkspaceModalOpen = useProjectStore((s) => s.setWorkspaceModalOpen);
   const createExampleWorkspace = useProjectStore((s) => s.createExampleWorkspace);
   const theme = useAppStore((s) => s.settings.theme);
+  const runs = useRunnerStore((s) => s.runs);
+  const building = useRunnerStore((s) => s.building);
+  const runSingleNode = useRunnerStore((s) => s.runSingleNode);
+  const openNodeSource = useRunnerStore((s) => s.openNodeSource);
 
   const rf = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const [quickAdd, setQuickAdd] = useState<QuickAddState | null>(null);
   const [rolePrompt, setRolePrompt] = useState<PendingRolePrompt | null>(null);
+  const [nodeMenu, setNodeMenu] = useState<NodeContextMenuState | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [livePositions, setLivePositions] = useState<
     Record<string, { x: number; y: number }>
@@ -330,6 +348,16 @@ function GraphCanvasInner({
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(
     () => new Set()
   );
+
+  const runningNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of runs) {
+      if (r.status === "running") {
+        for (const nid of r.nodeIds) ids.add(nid);
+      }
+    }
+    return ids;
+  }, [runs]);
 
   // Sync external selection (Outline click, Problems click, Ctrl+F jump, newly added item) onto canvas
   useEffect(() => {
@@ -361,7 +389,8 @@ function GraphCanvasInner({
       livePositions,
       measuredSizes,
       selectedNodeIds,
-      selectedEdgeIds
+      selectedEdgeIds,
+      runningNodeIds
     );
   }, [
     project,
@@ -371,6 +400,7 @@ function GraphCanvasInner({
     measuredSizes,
     selectedNodeIds,
     selectedEdgeIds,
+    runningNodeIds,
   ]);
 
   // Focus & zoom to target when requested (Problems panel click or Ctrl+F search)
@@ -430,6 +460,7 @@ function GraphCanvasInner({
       } else if (e.key === "Escape") {
         setQuickAdd(null);
         setRolePrompt(null);
+        setNodeMenu(null);
         if (searchOpen) onCloseSearch();
       }
     };
@@ -787,6 +818,7 @@ function GraphCanvasInner({
       if (!target.classList.contains("react-flow__pane")) return;
       const rect = wrapperRef.current?.getBoundingClientRect();
       const flowPos = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      setNodeMenu(null);
       setQuickAdd({
         screenX: e.clientX - (rect?.left ?? 0),
         screenY: e.clientY - (rect?.top ?? 0),
@@ -796,6 +828,32 @@ function GraphCanvasInner({
       });
     },
     [project, rf]
+  );
+
+  // Right-click context menu on ROS nodes (F2.4 + Open Source in Editor)
+  const onNodeContextMenu = useCallback(
+    (e: ReactMouseEvent, node: Node) => {
+      if (!project || node.type !== "rosNode" || !node.parentId) return;
+      e.preventDefault();
+      const pkg = project.packages.find((p) => p.id === node.parentId);
+      const rosNode = pkg?.nodes.find((n) => n.id === node.id);
+      if (!pkg || !rosNode) return;
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      const maxX = Math.max(16, (rect?.width ?? 400) - 220);
+      const maxY = Math.max(16, (rect?.height ?? 300) - 140);
+      const screenX = Math.min(Math.max(8, e.clientX - (rect?.left ?? 0)), maxX);
+      const screenY = Math.min(Math.max(8, e.clientY - (rect?.top ?? 0)), maxY);
+      setQuickAdd(null);
+      setSelected({ kind: "node", id: rosNode.id, packageId: pkg.id });
+      setNodeMenu({
+        screenX,
+        screenY,
+        packageId: pkg.id,
+        nodeId: rosNode.id,
+        nodeName: rosNode.name,
+      });
+    },
+    [project, setSelected]
   );
 
   const searchMatches = useMemo(() => {
@@ -953,6 +1011,8 @@ function GraphCanvasInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
+        onNodeClick={() => setNodeMenu(null)}
+        onNodeContextMenu={onNodeContextMenu}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
         onEdgesDelete={onEdgesDelete}
@@ -962,6 +1022,7 @@ function GraphCanvasInner({
           setSelectedNodeIds(new Set());
           setSelectedEdgeIds(new Set());
           setQuickAdd(null);
+          setNodeMenu(null);
         }}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -984,6 +1045,57 @@ function GraphCanvasInner({
         />
         <Controls />
       </ReactFlow>
+
+      {/* Right-click ROS Node Context Menu (F2.4 + Open Source in Editor) */}
+      {nodeMenu && (
+        <div
+          style={{ left: nodeMenu.screenX, top: nodeMenu.screenY }}
+          className="absolute z-30 w-56 rounded-xl border border-slate-300 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        >
+          <div className="mb-1 flex items-center justify-between border-b border-slate-200 px-2 pb-1 dark:border-slate-800">
+            <span className="truncate font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+              {nodeMenu.nodeName}
+            </span>
+            {runningNodeIds.has(nodeMenu.nodeId) && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-500">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                running
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={building}
+            onClick={() => {
+              const pkg = project.packages.find((p) => p.id === nodeMenu.packageId);
+              const rosNode = pkg?.nodes.find((n) => n.id === nodeMenu.nodeId);
+              setNodeMenu(null);
+              if (pkg && rosNode) {
+                void runSingleNode(pkg, rosNode);
+              }
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-emerald-500/15 hover:text-emerald-700 disabled:opacity-40 dark:text-slate-200 dark:hover:text-emerald-300"
+          >
+            <Play className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Run Node (ros2 run)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const pkg = project.packages.find((p) => p.id === nodeMenu.packageId);
+              const rosNode = pkg?.nodes.find((n) => n.id === nodeMenu.nodeId);
+              setNodeMenu(null);
+              if (pkg && rosNode) {
+                void openNodeSource(pkg, rosNode);
+              }
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-sky-500/15 hover:text-sky-700 dark:text-slate-200 dark:hover:text-sky-300"
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-sky-500" />
+            <span>Open Source in Editor</span>
+          </button>
+        </div>
+      )}
 
       {/* Ctrl+F Canvas Search Overlay (F1.11) */}
       {searchOpen && (

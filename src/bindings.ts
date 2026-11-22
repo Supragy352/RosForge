@@ -18,6 +18,13 @@ export const commands = {
 	previewGenerate: (project: Project, options?: InvokeOptions) => __TAURI_INVOKE<GeneratePreview>("preview_generate", { project }, options),
 	applyGenerate: (project: Project, resolutions: { [key in string]: FileResolution }, options?: InvokeOptions) => __TAURI_INVOKE<ApplyGenerateResult>("apply_generate", { project, resolutions }, options),
 	openDevtools: (toggle: boolean | null, options?: InvokeOptions) => __TAURI_INVOKE<boolean>("open_devtools", { toggle }, options),
+	startBuild: (request: BuildRequest, options?: InvokeOptions) => __TAURI_INVOKE<BuildStartResponse>("start_build", { request }, options),
+	cancelBuild: (options?: InvokeOptions) => __TAURI_INVOKE<boolean>("cancel_build", undefined, options),
+	cleanWorkspace: (request: CleanRequest, options?: InvokeOptions) => __TAURI_INVOKE<CleanResult>("clean_workspace", { request }, options),
+	startRun: (request: RunRequest, options?: InvokeOptions) => __TAURI_INVOKE<RunStartResponse>("start_run", { request }, options),
+	stopRun: (runId: string, options?: InvokeOptions) => __TAURI_INVOKE<boolean>("stop_run", { runId }, options),
+	getRunnerStatus: (options?: InvokeOptions) => __TAURI_INVOKE<RunnerStatus>("get_runner_status", undefined, options),
+	openInEditor: (file: string, line: number | null, options?: InvokeOptions) => __TAURI_INVOKE<null>("open_in_editor", { file, line }, options),
 };
 
 /* Types */
@@ -30,6 +37,34 @@ export type ApplyGenerateResult = {
 
 /**  Behavior templates (expanded in M3). */
 export type Behavior = { template: "log_message"; level: LogLevel; fields: string[] } | { template: "republish"; target_port_id: string; throttle_hz: number | null } | { template: "publish_constant"; target_port_id: string; fields: { [key in string]: string } } | { template: "waveform"; target_port_id: string; field: string; mode: WaveformMode; amplitude: number | null; frequency_hz: number | null; step: number | null } | { template: "field_math"; target_port_id: string; output_field: string; expression: string } | { template: "threshold"; target_port_id: string; input_field: string; operator: ThresholdOp; value: number | null } | { template: "echo_service"; fields: { [key in string]: string } } | { template: "fake_action"; steps: number; step_delay_ms: number };
+
+export type BuildFinishedEvent = {
+	buildId: string,
+	success: boolean,
+	cancelled: boolean,
+	exitCode: number | null,
+	durationMs: number,
+	diagnostics: Diagnostic[],
+};
+
+export type BuildMode = "project" | "all";
+
+export type BuildOutputEvent = {
+	buildId: string,
+	stream: string,
+	line: string,
+};
+
+export type BuildRequest = {
+	workspacePath: string,
+	mode: BuildMode,
+	packages: string[],
+};
+
+export type BuildStartResponse = {
+	buildId: string,
+	command: string,
+};
 
 export type CanvasPosition = {
 	x: number | null,
@@ -44,6 +79,16 @@ export type CanvasState = {
 export type CatalogSource = "ros2" | "cache" | "fallback";
 
 export type ChannelKind = "topic" | "service" | "action";
+
+export type CleanRequest = {
+	workspacePath: string,
+	packages: string[],
+	cleanAll: boolean,
+};
+
+export type CleanResult = {
+	removedPaths: string[],
+};
 
 export type CodeLocation = {
 	file: string,
@@ -194,6 +239,11 @@ export type Project = {
 	generatedFileHashes?: { [key in string]: string },
 };
 
+export type ProjectLaunchTarget = {
+	packageName: string,
+	launchFile: string,
+};
+
 export type QosDurability = "volatile" | "transient_local" | "system_default";
 
 export type QosHistory = "keep_last" | "keep_all" | "system_default";
@@ -231,6 +281,41 @@ export type RosNode = {
 	params: Param[],
 	timers: Timer[],
 	sourceFile?: string | null,
+};
+
+export type RunExitedEvent = {
+	runId: string,
+	stopped: boolean,
+	exitCode: number | null,
+};
+
+export type RunOutputEvent = {
+	runId: string,
+	stream: string,
+	line: string,
+	nodePrefix: string | null,
+	level: string | null,
+};
+
+export type RunRequest = {
+	workspacePath: string,
+	label: string,
+	target: RunTarget,
+};
+
+export type RunStartResponse = {
+	runId: string,
+	label: string,
+	command: string,
+	nodeIds: string[],
+};
+
+export type RunTarget = { kind: "package_launch"; packageName: string; launchFile: string; nodeIds: string[] } | { kind: "single_node"; packageName: string; executable: string; nodeId: string; nodeName: string } | { kind: "whole_project"; packages: ProjectLaunchTarget[]; nodeIds: string[] };
+
+export type RunnerStatus = {
+	building: boolean,
+	activeBuildId: string | null,
+	activeRuns: RunStartResponse[],
 };
 
 export type Settings = {

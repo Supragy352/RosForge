@@ -107,6 +107,8 @@ function formatErr(err: unknown): string {
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 let validateTimer: ReturnType<typeof setTimeout> | null = null;
 
+export type BottomTab = "problems" | "output" | "build" | "run";
+
 interface ProjectStoreState {
   project: Project | null;
   dirty: boolean;
@@ -116,7 +118,7 @@ interface ProjectStoreState {
   catalog: InterfaceCatalog | null;
   loadingCatalog: boolean;
   selected: SelectedEntity | null;
-  bottomTab: "problems" | "output";
+  bottomTab: BottomTab;
   bottomPanelOpen: boolean;
   outputLog: OutputLogEntry[];
   workspaceModalOpen: boolean;
@@ -127,7 +129,7 @@ interface ProjectStoreState {
 
   appendLog: (level: OutputLogEntry["level"], text: string) => void;
   setSelected: (sel: SelectedEntity | null) => void;
-  setBottomTab: (tab: "problems" | "output") => void;
+  setBottomTab: (tab: BottomTab) => void;
   setBottomPanelOpen: (open: boolean) => void;
   setWorkspaceModalOpen: (open: boolean) => void;
   setGenerateModalOpen: (open: boolean) => void;

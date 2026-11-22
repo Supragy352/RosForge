@@ -3,6 +3,10 @@ use crate::codegen::{self, ApplyGenerateResult, FileResolution, GeneratePreview}
 use crate::model::{Diagnostic, Project};
 use crate::project;
 use crate::ros_env::{self, RosEnvConfig, RosHealthStatus};
+use crate::runner::{
+    self, BuildRequest, BuildStartResponse, CleanRequest, CleanResult, RunRequest,
+    RunStartResponse, RunnerStatus,
+};
 use crate::settings::Settings;
 use crate::validate;
 use crate::AppState;
@@ -245,5 +249,87 @@ pub fn open_devtools(app: AppHandle, toggle: Option<bool>) -> Result<bool, Strin
     win.open_devtools();
     Ok(true)
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn start_build(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: BuildRequest,
+) -> Result<BuildStartResponse, String> {
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let config = RosEnvConfig::from_settings(
+        &settings,
+        Some(PathBuf::from(request.workspace_path.trim())),
+    );
+    state.runner.start_build(app, config, request)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cancel_build(state: State<'_, AppState>) -> Result<bool, String> {
+    state.runner.cancel_build()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn clean_workspace(
+    state: State<'_, AppState>,
+    request: CleanRequest,
+) -> Result<CleanResult, String> {
+    state.runner.clean_workspace(request)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn start_run(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: RunRequest,
+) -> Result<RunStartResponse, String> {
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let config = RosEnvConfig::from_settings(
+        &settings,
+        Some(PathBuf::from(request.workspace_path.trim())),
+    );
+    state.runner.start_run(app, config, request)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn stop_run(state: State<'_, AppState>, run_id: String) -> Result<bool, String> {
+    state.runner.stop_run(&run_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_runner_status(state: State<'_, AppState>) -> RunnerStatus {
+    state.runner.status()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn open_in_editor(
+    state: State<'_, AppState>,
+    file: String,
+    line: Option<u32>,
+) -> Result<(), String> {
+    let editor_cmd = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .external_editor_command
+        .clone();
+    runner::open_in_external_editor(&editor_cmd, &file, line)
+}
+
 
 

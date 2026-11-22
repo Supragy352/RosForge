@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   Clock,
+  ExternalLink,
+  Play,
   Plus,
   RefreshCw,
   Search,
@@ -29,6 +31,7 @@ import {
   toPascalCase,
   useProjectStore,
 } from "../store/useProjectStore";
+import { useRunnerStore } from "../store/useRunnerStore";
 
 const LICENSES = [
   "Apache-2.0",
@@ -732,7 +735,12 @@ function NodeInspector({ pkgId, node }: { pkgId: string; node: RosNode }) {
   const addTimer = useProjectStore((s) => s.addTimer);
   const updateTimer = useProjectStore((s) => s.updateTimer);
   const deleteTimer = useProjectStore((s) => s.deleteTimer);
+  const building = useRunnerStore((s) => s.building);
+  const runSingleNode = useRunnerStore((s) => s.runSingleNode);
+  const openNodeSource = useRunnerStore((s) => s.openNodeSource);
   const [timerUnit, setTimerUnit] = useState<"ms" | "hz">("ms");
+
+  const pkg = project?.packages.find((p) => p.id === pkgId) ?? null;
 
   const channelsById = useMemo(
     () => new Map((project?.channels ?? []).map((c) => [c.id, c])),
@@ -752,18 +760,43 @@ function NodeInspector({ pkgId, node }: { pkgId: string; node: RosNode }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-1">
         <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
           ROS Node
         </span>
-        <button
-          type="button"
-          onClick={() => deleteNode(pkgId, node.id)}
-          className="rounded p-1 text-rose-400 hover:bg-rose-500/15"
-          title="Delete node"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {pkg && (
+            <>
+              <button
+                type="button"
+                disabled={building}
+                onClick={() => void runSingleNode(pkg, node)}
+                title={`Run node (ros2 run ${pkg.name} ${node.executable || node.name})`}
+                className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-300"
+              >
+                <Play className="h-2.5 w-2.5" />
+                Run
+              </button>
+              <button
+                type="button"
+                onClick={() => void openNodeSource(pkg, node)}
+                title="Open generated source file in external editor"
+                className="inline-flex items-center gap-1 rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                Code
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => deleteNode(pkgId, node.id)}
+            className="rounded p-1 text-rose-400 hover:bg-rose-500/15"
+            title="Delete node"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2.5">

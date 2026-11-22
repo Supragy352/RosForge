@@ -132,6 +132,61 @@ pub fn run_in_ros(
     LocalBashRosEnv.spawn_in_ros(config, cmd, cwd)
 }
 
+/// Spawn a long-running ROS 2 command (such as `colcon build`, `ros2 run`, or `ros2 launch`)
+/// inside its own process group so stopping/canceling can cleanly send SIGINT to the whole tree.
+pub fn spawn_in_ros_process_group(
+    config: &RosEnvConfig,
+    cmd: &str,
+    cwd: Option<&Path>,
+) -> Result<Child, RosEnvError> {
+    let script = build_ros_shell_script(config, cmd);
+
+    let mut command = Command::new("bash");
+    command
+        .arg("-lc")
+        .arg(&script)
+        .env("ROS_DOMAIN_ID", config.ros_domain_id.to_string())
+        .env("PYTHONUNBUFFERED", "1")
+        .env("RCUTILS_COLORIZED_OUTPUT", "1")
+        .env("CLICOLOR_FORCE", "1")
+        .env("FORCE_COLOR", "1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
+    }
+
+    #[cfg(unix)]
+    {
+        command.process_group(0);
+    }
+
+    command.spawn().map_err(|source| RosEnvError::SpawnFailed {
+        shell: "bash".to_string(),
+        source,
+    })
+}
+
+/// Send a POSIX signal (`INT`, `TERM`, or `KILL`) to a process group led by `pid`.
+pub fn signal_process_group(pid: u32, signal: &str) {
+    #[cfg(unix)]
+    {
+        let pgid_arg = format!("-{pid}");
+        let _ = std::process::Command::new("kill")
+            .arg(format!("-{signal}"))
+            .arg(&pgid_arg)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (pid, signal);
+    }
+}
+
 /// Startup health check: verifies the configured ROS setup script and runs `ros2 --help`.
 pub async fn check_ros_health(config: &RosEnvConfig) -> RosHealthStatus {
     let setup_display = config.ros_setup_path.display().to_string();
