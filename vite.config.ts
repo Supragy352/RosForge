@@ -24,7 +24,6 @@ export default defineConfig({
       ignored: [
         "**/src-tauri/**",
         "**/docs/**",
-        "**/tracker/**",
         "**/wsl-ubuntu-24.04/**",
       ],
     },

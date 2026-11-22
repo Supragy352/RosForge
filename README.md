@@ -12,7 +12,6 @@
 - **Full Inspector & Interface Catalog** — Edit package metadata, launch files, node parameters (typed + validated), timers (`ms` / `Hz`), QoS presets/custom profiles, and browse live `ros2 interface` types with offline caching.
 - **Live Validation** — Instant ROS 2 naming checks, duplicate detection, interface & parameter type checks (errors block generation), plus orphan channel, multi-server, and QoS mismatch warnings.
 - **Deterministic Code Generation & Protected Regions** — Generates buildable `ament_python` and `-Wall -Wextra -Wpedantic`-clean `ament_cmake` C++ packages with unified diff preview and `# >>> rosforge:user <id>` / `// >>> rosforge:user <id>` blocks that preserve your code across renames and regenerations.
-- **Repo-Native Progress Tracker** — Built-in Kanban & milestone dashboard backed by `tracker/items.json`.
 
 ---
 
@@ -44,20 +43,14 @@ pnpm tauri dev
 On Windows with the project's WSL2 distro (`RosForge-Ubuntu-24.04`):
 
 ```powershell
+# Fast prebuilt launch (~1-2s; pass -Rebuild after code changes)
+.\scripts\run-fast.ps1
+
+# Or live HMR dev server
 wsl -d RosForge-Ubuntu-24.04 -- bash -lc 'cd /mnt/e/Dev/Robotics/RosForge && export CARGO_TARGET_DIR="$HOME/.cache/rosforge-target" && pnpm tauri dev'
 ```
 
-### 2. Run the Local Progress Tracker
-
-```powershell
-# CLI summary
-node scripts/tracker.mjs summary
-
-# Interactive browser dashboard & Kanban board
-node scripts/tracker.mjs serve
-```
-
-### 3. Run Tests
+### 2. Run Tests
 
 ```bash
 # Rust backend tests (includes live `colcon build` verification under ROS 2 Jazzy)
@@ -67,8 +60,8 @@ cargo test --manifest-path src-tauri/Cargo.toml
 # Frontend TypeScript check & production bundle
 pnpm build
 
-# Frontend store & tracker unit tests
-pnpm vitest run --environment=node src/store/useProjectStore.test.ts src/tracker/tracker.test.ts
+# Frontend store unit tests
+pnpm vitest run --environment=node src/store/useProjectStore.test.ts
 ```
 
 ---

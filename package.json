@@ -12,8 +12,6 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "gen:bindings": "cargo run --manifest-path src-tauri/Cargo.toml --bin export_bindings",
-    "tracker": "node scripts/tracker.mjs",
-    "tracker:serve": "node scripts/tracker.mjs serve",
     "docs:dev": "pnpm --dir docs dev",
     "docs:build": "pnpm --dir docs build",
     "docs:preview": "pnpm --dir docs preview"

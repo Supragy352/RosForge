@@ -159,7 +159,7 @@ Regions exist for extra **imports/includes**, **constructor init**, **C++ privat
 
 ## 7. Roadmap (Upcoming Milestones)
 
-The toolbar already shows placeholders for upcoming milestones tracked in `tracker/items.json`:
+The toolbar already shows placeholders for upcoming milestones defined in `SPEC.md`:
 
 - **M2 — Build & Run:** In-app streaming `colcon build`, clickable GCC/CMake/Python compiler errors, Run panel with per-node log tabs, and live running-node pulse indicators.
 - **M3 — Live ROS 2 Introspection:** Overlay live `ros2 node/topic` graph, live topic echo, and runtime parameter viewer.
