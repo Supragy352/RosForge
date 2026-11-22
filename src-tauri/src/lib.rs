@@ -101,9 +101,11 @@ pub fn run() {
             .join("..")
             .join("src")
             .join("bindings.ts");
-        builder
-            .export(Typescript::default(), &bindings_path)
-            .expect("Failed to export TypeScript bindings");
+        if bindings_path.parent().is_some_and(|p| p.exists()) {
+            if let Err(err) = builder.export(Typescript::default(), &bindings_path) {
+                eprintln!("Warning: failed to export TypeScript bindings: {err}");
+            }
+        }
     }
 
     let app_state = AppState::initialize();

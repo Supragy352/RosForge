@@ -98,7 +98,7 @@ export function SettingsModal() {
                     defaultWorkspace: e.target.value.trim() ? e.target.value : null,
                   })
                 }
-                placeholder="/home/user/ros2_ws"
+                placeholder="~/ros2_ws"
                 className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 font-mono text-sm text-slate-900 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               />
             </div>
@@ -180,7 +180,7 @@ export function SettingsModal() {
                 Build before running
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Automatically run colcon build before launching nodes (M2)
+                Automatically run colcon build before launching nodes
               </div>
             </div>
             <input

@@ -33,7 +33,7 @@ jobs:
         run: pnpm build
 
       - name: Run Node-environment unit tests
-        run: pnpm vitest run --environment=node src/store/useProjectStore.test.ts
+        run: pnpm vitest run --environment=node src/store/useProjectStore.test.ts src/utils/ansi.test.ts
 
       - name: Run jsdom store unit tests
         run: pnpm vitest run src/store/useAppStore.test.ts

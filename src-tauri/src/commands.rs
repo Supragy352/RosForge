@@ -89,7 +89,7 @@ pub fn open_workspace(
     workspace_path: String,
     project_name: Option<String>,
 ) -> Result<Project, String> {
-    let ws = PathBuf::from(workspace_path.trim());
+    let ws = project::expand_tilde(&workspace_path);
     let proj = project::open_or_init_workspace(&ws, project_name.as_deref())
         .map_err(|e| e.to_string())?;
 
@@ -131,6 +131,7 @@ pub fn create_example_project(
     if ws_trimmed.is_empty() {
         return Err("Workspace path cannot be empty".to_string());
     }
+    let ws_expanded = project::expand_tilde(ws_trimmed).display().to_string();
 
     let (maint_name, maint_email) = {
         let settings = state
@@ -143,7 +144,7 @@ pub fn create_example_project(
         )
     };
 
-    let proj = project::build_talker_listener_example(ws_trimmed, &maint_name, &maint_email);
+    let proj = project::build_talker_listener_example(&ws_expanded, &maint_name, &maint_email);
     project::save_project(&proj).map_err(|e| e.to_string())?;
 
     {
@@ -255,17 +256,16 @@ pub fn open_devtools(app: AppHandle, toggle: Option<bool>) -> Result<bool, Strin
 pub fn start_build(
     app: AppHandle,
     state: State<'_, AppState>,
-    request: BuildRequest,
+    mut request: BuildRequest,
 ) -> Result<BuildStartResponse, String> {
     let settings = state
         .settings
         .lock()
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
-    let config = RosEnvConfig::from_settings(
-        &settings,
-        Some(PathBuf::from(request.workspace_path.trim())),
-    );
+    let ws = project::expand_tilde(&request.workspace_path);
+    request.workspace_path = ws.display().to_string();
+    let config = RosEnvConfig::from_settings(&settings, Some(ws));
     state.runner.start_build(app, config, request)
 }
 
@@ -279,8 +279,11 @@ pub fn cancel_build(state: State<'_, AppState>) -> Result<bool, String> {
 #[specta::specta]
 pub fn clean_workspace(
     state: State<'_, AppState>,
-    request: CleanRequest,
+    mut request: CleanRequest,
 ) -> Result<CleanResult, String> {
+    request.workspace_path = project::expand_tilde(&request.workspace_path)
+        .display()
+        .to_string();
     state.runner.clean_workspace(request)
 }
 
@@ -289,17 +292,16 @@ pub fn clean_workspace(
 pub fn start_run(
     app: AppHandle,
     state: State<'_, AppState>,
-    request: RunRequest,
+    mut request: RunRequest,
 ) -> Result<RunStartResponse, String> {
     let settings = state
         .settings
         .lock()
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
-    let config = RosEnvConfig::from_settings(
-        &settings,
-        Some(PathBuf::from(request.workspace_path.trim())),
-    );
+    let ws = project::expand_tilde(&request.workspace_path);
+    request.workspace_path = ws.display().to_string();
+    let config = RosEnvConfig::from_settings(&settings, Some(ws));
     state.runner.start_run(app, config, request)
 }
 
@@ -328,7 +330,8 @@ pub fn open_in_editor(
         .map_err(|_| "settings lock poisoned".to_string())?
         .external_editor_command
         .clone();
-    runner::open_in_external_editor(&editor_cmd, &file, line)
+    let expanded = project::expand_tilde(&file).display().to_string();
+    runner::open_in_external_editor(&editor_cmd, &expanded, line)
 }
 
 

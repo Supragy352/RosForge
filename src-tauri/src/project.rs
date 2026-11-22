@@ -49,6 +49,21 @@ pub fn project_file_path(workspace_path: &Path) -> PathBuf {
     workspace_path.join(PROJECT_FILE_NAME)
 }
 
+/// Expands a leading `~` or `~/` to the current user's home directory.
+pub fn expand_tilde(raw: &str) -> PathBuf {
+    let trimmed = raw.trim();
+    if trimmed == "~" {
+        if let Some(home) = dirs::home_dir() {
+            return home;
+        }
+    } else if let Some(rest) = trimmed.strip_prefix("~/").or_else(|| trimmed.strip_prefix("~\\")) {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(rest);
+        }
+    }
+    PathBuf::from(trimmed)
+}
+
 /// Schema migration hook for `.rosforge.json`.
 /// Currently supports `schemaVersion: 1` and rejects unknown future versions.
 pub fn migrate_project_json(mut value: serde_json::Value) -> Result<Project, ProjectError> {
@@ -88,6 +103,8 @@ pub fn open_or_init_workspace(
     if ws_str.trim().is_empty() {
         return Err(ProjectError::EmptyWorkspacePath);
     }
+    let expanded = expand_tilde(&ws_str);
+    let workspace_path = expanded.as_path();
 
     fs::create_dir_all(workspace_path).map_err(|source| ProjectError::CreateDirFailed {
         path: workspace_path.display().to_string(),
@@ -157,7 +174,8 @@ pub fn save_project(project: &Project) -> Result<(), ProjectError> {
         return Err(ProjectError::EmptyWorkspacePath);
     }
 
-    let workspace_path = Path::new(&project.workspace_path);
+    let expanded = expand_tilde(&project.workspace_path);
+    let workspace_path = expanded.as_path();
     fs::create_dir_all(workspace_path).map_err(|source| ProjectError::CreateDirFailed {
         path: workspace_path.display().to_string(),
         source,
@@ -486,5 +504,14 @@ mod tests {
         assert_eq!(loaded, proj);
         assert_eq!(loaded.packages.len(), 2);
         assert_eq!(loaded.channels.len(), 3);
+    }
+
+    #[test]
+    fn expands_leading_tilde_to_home_dir() {
+        if let Some(home) = dirs::home_dir() {
+            assert_eq!(expand_tilde("~"), home);
+            assert_eq!(expand_tilde("~/ros2_ws"), home.join("ros2_ws"));
+        }
+        assert_eq!(expand_tilde("/tmp/ros2_ws"), PathBuf::from("/tmp/ros2_ws"));
     }
 }

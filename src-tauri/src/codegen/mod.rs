@@ -17,7 +17,6 @@ use similar::TextDiff;
 use specta::Type;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
-use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
@@ -108,7 +107,7 @@ pub fn preview_generate(project: &Project) -> GeneratePreview {
     let diagnostics = validate_project(project);
     let errors_present = has_errors(&diagnostics);
 
-    let ws_root = Path::new(&project.workspace_path);
+    let ws_root = crate::project::expand_tilde(&project.workspace_path);
     let units = generate_all_units(project);
     let mut files = Vec::with_capacity(units.len());
 
@@ -203,7 +202,7 @@ pub fn apply_generate(
     }
 
     let mut updated_project = project.clone();
-    let ws_root = Path::new(&updated_project.workspace_path);
+    let ws_root = crate::project::expand_tilde(&updated_project.workspace_path);
 
     let mut to_write: Vec<(String, String, String)> = Vec::new();
     let mut skipped_files = Vec::new();
@@ -287,6 +286,7 @@ mod tests {
         DEFAULT_ROS_DISTRO,
     };
     use crate::project::build_talker_listener_example;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn deterministic_fixture_project(ws: &str) -> Project {

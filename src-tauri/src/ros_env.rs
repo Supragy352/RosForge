@@ -33,14 +33,16 @@ pub struct RosEnvConfig {
 impl RosEnvConfig {
     pub fn from_settings(settings: &Settings, workspace_path: Option<PathBuf>) -> Self {
         Self {
-            ros_setup_path: PathBuf::from(&settings.ros_setup_path),
-            workspace_path: workspace_path.or_else(|| {
-                settings
-                    .default_workspace
-                    .as_ref()
-                    .filter(|s| !s.trim().is_empty())
-                    .map(PathBuf::from)
-            }),
+            ros_setup_path: crate::project::expand_tilde(&settings.ros_setup_path),
+            workspace_path: workspace_path
+                .map(|p| crate::project::expand_tilde(&p.to_string_lossy()))
+                .or_else(|| {
+                    settings
+                        .default_workspace
+                        .as_ref()
+                        .filter(|s| !s.trim().is_empty())
+                        .map(|s| crate::project::expand_tilde(s))
+                }),
             ros_domain_id: settings.ros_domain_id,
         }
     }

@@ -934,7 +934,7 @@ function GraphCanvasInner({
               onClick={() => {
                 const defaultPath =
                   useAppStore.getState().settings.defaultWorkspace ||
-                  "/tmp/rosforge_demo_ws";
+                  "~/rosforge_demo_ws";
                 void createExampleWorkspace(defaultPath);
               }}
               className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"

@@ -2,16 +2,17 @@
 
 **RosForge** is a local-first desktop node-graph IDE for **ROS 2 Jazzy** (Tauri 2 + React 18 + TypeScript + Rust). Design packages, nodes, topics, services, actions, parameters, timers, QoS profiles, and launch files visually—then generate clean, idiomatic `ament_python` and `ament_cmake` (C++) packages while preserving your hand-written callback logic across regenerations.
 
-> **Current Status:** Milestones **M0 (Scaffolding)** and **M1 (Draw Graph → Generate)** are complete (34/64 spec features). Next up: **M2 (Build & Run)**.
+> **Current Status:** Milestones **M0 (Scaffolding)**, **M1 (Draw Graph → Generate)**, and **M2 (Build & Run + External Editor)** are complete.
 
 ---
 
 ## Key Capabilities (Implemented)
 
-- **Visual ROS 2 Graph Canvas** — Sub-flow package frames, ROS node cards (`PY` / `C++`), color-coded topic/service/action pills, drag-to-wire connections, drop-on-empty-canvas topic creation, double-click quick-add, ELK auto-layout, Minimap, and `Ctrl+F` search.
+- **Visual ROS 2 Graph Canvas** — Sub-flow package frames, ROS node cards (`PY` / `C++`) with live running pulse, color-coded topic/service/action pills, drag-to-wire connections, drop-on-empty-canvas topic creation, double-click quick-add, right-click node menu, ELK auto-layout, Minimap, and `Ctrl+F` search.
 - **Full Inspector & Interface Catalog** — Edit package metadata, launch files, node parameters (typed + validated), timers (`ms` / `Hz`), QoS presets/custom profiles, and browse live `ros2 interface` types with offline caching.
-- **Live Validation** — Instant ROS 2 naming checks, duplicate detection, interface & parameter type checks (errors block generation), plus orphan channel, multi-server, and QoS mismatch warnings.
+- **Live Validation & Build Diagnostics** — Instant ROS 2 naming checks, duplicate detection, interface & parameter type checks (errors block generation), QoS mismatch warnings, plus GCC/Clang/CMake/Python/colcon build error parsing with clickable jump-to-editor (`code -g {file}:{line}`).
 - **Deterministic Code Generation & Protected Regions** — Generates buildable `ament_python` and `-Wall -Wextra -Wpedantic`-clean `ament_cmake` C++ packages with unified diff preview and `# >>> rosforge:user <id>` / `// >>> rosforge:user <id>` blocks that preserve your code across renames and regenerations.
+- **Integrated Build & Run (`Ctrl+B` / `F5`)** — Streaming ANSI-colored `colcon build --symlink-install`, process-group `SIGINT` cancel, workspace clean, per-run tabs (`ros2 launch`, `ros2 run`, Run Whole Project) with node-prefix and log-level filters.
 
 ---
 
@@ -31,16 +32,20 @@ Browse the live documentation site at **[https://Supragy352.github.io/RosForge/]
 
 ## Quick Start
 
-### 1. Run RosForge (Ubuntu 24.04 or WSL2 with WSLg)
+### 1. Run RosForge on Native Ubuntu 24.04 (ROS 2 Jazzy)
 
 ```bash
-# Inside Ubuntu 24.04 (or WSL2 distro with ROS 2 Jazzy)
-source /opt/ros/jazzy/setup.bash
+# One-time setup: installs Tauri 2 system libs, ROS 2 Jazzy, colcon, Node 22, pnpm, Rust
+bash scripts/setup_linux_jazzy.sh
+
+# Install JS dependencies and launch RosForge
 pnpm install
 pnpm tauri dev
 ```
 
-On Windows with the project's WSL2 distro (`RosForge-Ubuntu-24.04`):
+> **Note (NVIDIA + Wayland):** If the WebKitGTK window appears blank on an NVIDIA Wayland session, launch with `WEBKIT_DISABLE_DMABUF_RENDERER=1 pnpm tauri dev`.
+
+### 2. Run on Windows via WSL2 + WSLg
 
 ```powershell
 # Fast prebuilt launch (~1-2s; pass -Rebuild after code changes)
@@ -50,18 +55,15 @@ On Windows with the project's WSL2 distro (`RosForge-Ubuntu-24.04`):
 wsl -d RosForge-Ubuntu-24.04 -- bash -lc 'cd /mnt/e/Dev/Robotics/RosForge && export CARGO_TARGET_DIR="$HOME/.cache/rosforge-target" && pnpm tauri dev'
 ```
 
-### 2. Run Tests
+### 3. Run Tests
 
 ```bash
 # Rust backend tests (includes live `colcon build` verification under ROS 2 Jazzy)
-export CARGO_TARGET_DIR="$HOME/.cache/rosforge-target"
 cargo test --manifest-path src-tauri/Cargo.toml
 
-# Frontend TypeScript check & production bundle
+# Frontend TypeScript check, production bundle & unit tests
 pnpm build
-
-# Frontend store unit tests
-pnpm vitest run --environment=node src/store/useProjectStore.test.ts
+pnpm test
 ```
 
 ---

@@ -19,7 +19,7 @@ export function WorkspaceModal() {
       setWsPath(
         settings.defaultWorkspace ||
           settings.recentWorkspaces[0] ||
-          "/tmp/rosforge_ws"
+          "~/rosforge_ws"
       );
       setProjName("");
     }
@@ -69,7 +69,7 @@ export function WorkspaceModal() {
         <form onSubmit={(e) => void handleOpen(e)} className="space-y-4 px-5 py-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
-              Workspace Folder Path (Linux / WSL path)
+              Workspace Folder Path (Linux path, <code className="font-mono">~</code> supported)
             </label>
             <input
               autoFocus
@@ -77,7 +77,7 @@ export function WorkspaceModal() {
               required
               value={wsPath}
               onChange={(e) => setWsPath(e.target.value)}
-              placeholder="/home/supragy/ros2_ws"
+              placeholder="~/ros2_ws"
               className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 font-mono text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
             />
           </div>
