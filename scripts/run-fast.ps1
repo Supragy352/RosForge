@@ -22,28 +22,30 @@ param(
 $ErrorActionPreference = "Stop"
 $rebuildFlag = if ($Rebuild) { "1" } else { "0" }
 
-$bashScript = @"
+# Single-quoted here-string prevents PowerShell from expanding $HOME / $FAST_BIN
+$bashScript = @'
 set -euo pipefail
+REBUILD_FLAG="${1:-0}"
 REPO="/mnt/e/Dev/Robotics/RosForge"
-TARGET_DIR="\$HOME/.cache/rosforge-target"
-FAST_DIR="\$HOME/.cache/rosforge-fast"
-FAST_BIN="\$FAST_DIR/rosforge"
+TARGET_DIR="$HOME/.cache/rosforge-target"
+FAST_DIR="$HOME/.cache/rosforge-fast"
+FAST_BIN="$FAST_DIR/rosforge"
 
-if [ "$rebuildFlag" = "1" ] || [ ! -x "\$FAST_BIN" ]; then
+if [ "$REBUILD_FLAG" = "1" ] || [ ! -x "$FAST_BIN" ]; then
   echo "[RosForge] Building standalone fast-launch binary (one-time or -Rebuild)..."
-  cd "\$REPO"
-  export CARGO_TARGET_DIR="\$TARGET_DIR"
+  cd "$REPO"
+  export CARGO_TARGET_DIR="$TARGET_DIR"
   pnpm build
   cargo build --manifest-path src-tauri/Cargo.toml --features tauri/custom-protocol
-  mkdir -p "\$FAST_DIR"
-  cp "\$TARGET_DIR/debug/rosforge" "\$FAST_BIN"
-  chmod +x "\$FAST_BIN"
-  echo "[RosForge] Cached at \$FAST_BIN"
+  mkdir -p "$FAST_DIR"
+  cp "$TARGET_DIR/debug/rosforge" "$FAST_BIN"
+  chmod +x "$FAST_BIN"
+  echo "[RosForge] Cached at $FAST_BIN"
 fi
 
 echo "[RosForge] Launching cached binary (pass -Rebuild after editing code)..."
-exec "\$FAST_BIN"
-"@
+exec "$FAST_BIN"
+'@
 
 # Strip any Windows CR added by PowerShell's pipeline before executing in bash
-$bashScript | wsl -d $Distro -- bash -c "tr -d '\r' | bash -s"
+$bashScript | wsl -d $Distro -- bash -c "tr -d '\r' | bash -s -- $rebuildFlag"
